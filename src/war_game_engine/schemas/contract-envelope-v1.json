@@ -1,0 +1,2605 @@
+{
+  "$defs": {
+    "Ack": {
+      "additionalProperties": false,
+      "properties": {
+        "acknowledged_at": {
+          "format": "date-time",
+          "title": "Acknowledged At",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "ack",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "intent_id": {
+          "title": "Intent Id",
+          "type": "string"
+        },
+        "message": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Message"
+        },
+        "status": {
+          "enum": [
+            "confirmed",
+            "rejected",
+            "needs_confirmation"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "intent_id",
+        "status",
+        "acknowledged_at",
+        "evidence_ids",
+        "message"
+      ],
+      "title": "Ack",
+      "type": "object"
+    },
+    "Action": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "title": "Action Id",
+          "type": "string"
+        },
+        "action_schema_version": {
+          "const": "1.0.0",
+          "title": "Action Schema Version",
+          "type": "string"
+        },
+        "actor_player_id": {
+          "title": "Actor Player Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "action",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "expected_state_version": {
+          "minimum": 0,
+          "title": "Expected State Version",
+          "type": "integer"
+        },
+        "operation": {
+          "discriminator": {
+            "mapping": {
+              "attack": "#/$defs/AttackOperation",
+              "claim_territory": "#/$defs/ClaimTerritoryOperation",
+              "end_turn": "#/$defs/EndTurnOperation",
+              "move_armies": "#/$defs/MoveArmiesOperation",
+              "occupy_territory": "#/$defs/OccupyTerritoryOperation",
+              "place_armies": "#/$defs/PlaceArmiesOperation",
+              "trade_cards": "#/$defs/TradeCardsOperation"
+            },
+            "propertyName": "action_type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/ClaimTerritoryOperation"
+            },
+            {
+              "$ref": "#/$defs/PlaceArmiesOperation"
+            },
+            {
+              "$ref": "#/$defs/TradeCardsOperation"
+            },
+            {
+              "$ref": "#/$defs/AttackOperation"
+            },
+            {
+              "$ref": "#/$defs/OccupyTerritoryOperation"
+            },
+            {
+              "$ref": "#/$defs/MoveArmiesOperation"
+            },
+            {
+              "$ref": "#/$defs/EndTurnOperation"
+            }
+          ],
+          "title": "Operation"
+        }
+      },
+      "required": [
+        "contract_type",
+        "action_id",
+        "actor_player_id",
+        "action_schema_version",
+        "expected_state_version",
+        "operation"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "ActionIntent": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "$ref": "#/$defs/Action"
+        },
+        "contract_type": {
+          "const": "action_intent",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "title": "Created At",
+          "type": "string"
+        },
+        "expected_state_version": {
+          "minimum": 0,
+          "title": "Expected State Version",
+          "type": "integer"
+        },
+        "intent_id": {
+          "title": "Intent Id",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "agent",
+            "touch",
+            "voice",
+            "site",
+            "manual"
+          ],
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "intent_id",
+        "expected_state_version",
+        "action",
+        "source",
+        "created_at"
+      ],
+      "title": "ActionIntent",
+      "type": "object"
+    },
+    "Adjacency": {
+      "additionalProperties": false,
+      "properties": {
+        "first_territory_id": {
+          "title": "First Territory Id",
+          "type": "string"
+        },
+        "second_territory_id": {
+          "title": "Second Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "first_territory_id",
+        "second_territory_id"
+      ],
+      "title": "Adjacency",
+      "type": "object"
+    },
+    "AgentProtocol": {
+      "additionalProperties": false,
+      "properties": {
+        "action_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Encoding Version",
+          "type": "string"
+        },
+        "action_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Schema Version",
+          "type": "string"
+        },
+        "agent_id": {
+          "title": "Agent Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "agent_protocol",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "decision_budget_ms": {
+          "exclusiveMinimum": 0,
+          "title": "Decision Budget Ms",
+          "type": "integer"
+        },
+        "memory_scope": {
+          "const": "per_player",
+          "title": "Memory Scope",
+          "type": "string"
+        },
+        "observation_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Encoding Version",
+          "type": "string"
+        },
+        "observation_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Schema Version",
+          "type": "string"
+        },
+        "protocol_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Protocol Version",
+          "type": "string"
+        },
+        "rng_scope": {
+          "const": "private_per_player",
+          "title": "Rng Scope",
+          "type": "string"
+        },
+        "supported_ruleset_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Supported Ruleset Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract_type",
+        "protocol_version",
+        "agent_id",
+        "supported_ruleset_ids",
+        "observation_schema_version",
+        "observation_encoding_version",
+        "action_schema_version",
+        "action_encoding_version",
+        "memory_scope",
+        "rng_scope",
+        "decision_budget_ms"
+      ],
+      "title": "AgentProtocol",
+      "type": "object"
+    },
+    "ArmyPlacement": {
+      "additionalProperties": false,
+      "properties": {
+        "army_count": {
+          "exclusiveMinimum": 0,
+          "title": "Army Count",
+          "type": "integer"
+        },
+        "territory_id": {
+          "title": "Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "territory_id",
+        "army_count"
+      ],
+      "title": "ArmyPlacement",
+      "type": "object"
+    },
+    "AttackOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "attack",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "dice_count": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Dice Count",
+          "type": "integer"
+        },
+        "origin_territory_id": {
+          "title": "Origin Territory Id",
+          "type": "string"
+        },
+        "target_territory_id": {
+          "title": "Target Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "origin_territory_id",
+        "target_territory_id",
+        "dice_count"
+      ],
+      "title": "AttackOperation",
+      "type": "object"
+    },
+    "BeliefHypothesis": {
+      "additionalProperties": false,
+      "properties": {
+        "assignments": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Assignments",
+          "type": "object"
+        },
+        "hypothesis_id": {
+          "title": "Hypothesis Id",
+          "type": "string"
+        },
+        "probability": {
+          "maximum": 1.0,
+          "minimum": 0.0,
+          "title": "Probability",
+          "type": "number"
+        }
+      },
+      "required": [
+        "hypothesis_id",
+        "probability",
+        "assignments"
+      ],
+      "title": "BeliefHypothesis",
+      "type": "object"
+    },
+    "BeliefState": {
+      "additionalProperties": false,
+      "properties": {
+        "conditioned_on_event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Conditioned On Event Ids",
+          "type": "array"
+        },
+        "contract_type": {
+          "const": "belief_state",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "hypotheses": {
+          "items": {
+            "$ref": "#/$defs/BeliefHypothesis"
+          },
+          "title": "Hypotheses",
+          "type": "array"
+        },
+        "player_id": {
+          "title": "Player Id",
+          "type": "string"
+        },
+        "state_version": {
+          "minimum": 0,
+          "title": "State Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contract_type",
+        "game_id",
+        "player_id",
+        "state_version",
+        "conditioned_on_event_ids",
+        "hypotheses"
+      ],
+      "title": "BeliefState",
+      "type": "object"
+    },
+    "BoardGeometry": {
+      "additionalProperties": false,
+      "properties": {
+        "canvas_height": {
+          "exclusiveMinimum": 0,
+          "title": "Canvas Height",
+          "type": "integer"
+        },
+        "canvas_width": {
+          "exclusiveMinimum": 0,
+          "title": "Canvas Width",
+          "type": "integer"
+        },
+        "contract_type": {
+          "const": "board_geometry",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "coordinate_space": {
+          "enum": [
+            "pixels",
+            "normalized"
+          ],
+          "title": "Coordinate Space",
+          "type": "string"
+        },
+        "geometry_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Geometry Version",
+          "type": "string"
+        },
+        "territories": {
+          "items": {
+            "$ref": "#/$defs/TerritoryGeometry"
+          },
+          "title": "Territories",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract_type",
+        "geometry_version",
+        "coordinate_space",
+        "canvas_width",
+        "canvas_height",
+        "territories"
+      ],
+      "title": "BoardGeometry",
+      "type": "object"
+    },
+    "CertificateManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "certificate_id": {
+          "title": "Certificate Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "certificate_manifest",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "criterion_id": {
+          "title": "Criterion Id",
+          "type": "string"
+        },
+        "issued_at": {
+          "format": "date-time",
+          "title": "Issued At",
+          "type": "string"
+        },
+        "scope": {
+          "enum": [
+            "engine",
+            "policy",
+            "client",
+            "replay",
+            "dataset"
+          ],
+          "title": "Scope",
+          "type": "string"
+        },
+        "versions": {
+          "$ref": "#/$defs/SemanticVersionVector"
+        }
+      },
+      "required": [
+        "contract_type",
+        "certificate_id",
+        "scope",
+        "criterion_id",
+        "issued_at",
+        "artifact_sha256",
+        "versions"
+      ],
+      "title": "CertificateManifest",
+      "type": "object"
+    },
+    "ChanceOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_type": {
+          "const": "chance_outcome",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "outcome": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "private"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        },
+        "visible_to_player_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Visible To Player Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract_type",
+        "request_id",
+        "event_id",
+        "outcome",
+        "visibility"
+      ],
+      "title": "ChanceOutcome",
+      "type": "object"
+    },
+    "ChanceRequest": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_type": {
+          "const": "chance_request",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "parameters": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Parameters",
+          "type": "object"
+        },
+        "request_id": {
+          "title": "Request Id",
+          "type": "string"
+        },
+        "request_type": {
+          "enum": [
+            "combat_dice",
+            "draw_card",
+            "shuffle_deck"
+          ],
+          "title": "Request Type",
+          "type": "string"
+        },
+        "requested_by_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Requested By Player Id"
+        }
+      },
+      "required": [
+        "contract_type",
+        "request_id",
+        "game_id",
+        "request_type",
+        "requested_by_player_id",
+        "parameters"
+      ],
+      "title": "ChanceRequest",
+      "type": "object"
+    },
+    "ClaimTerritoryOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "claim_territory",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "territory_id": {
+          "title": "Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "territory_id"
+      ],
+      "title": "ClaimTerritoryOperation",
+      "type": "object"
+    },
+    "ContinentDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "continent_id": {
+          "title": "Continent Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "reinforcement_bonus": {
+          "minimum": 0,
+          "title": "Reinforcement Bonus",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "continent_id",
+        "name",
+        "reinforcement_bonus"
+      ],
+      "title": "ContinentDefinition",
+      "type": "object"
+    },
+    "DatasetManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "action_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Encoding Version",
+          "type": "string"
+        },
+        "action_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Schema Version",
+          "type": "string"
+        },
+        "artifact_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "dataset_manifest",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "dataset_id": {
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "dataset_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "observation_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Encoding Version",
+          "type": "string"
+        },
+        "observation_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Schema Version",
+          "type": "string"
+        },
+        "record_count": {
+          "minimum": 0,
+          "title": "Record Count",
+          "type": "integer"
+        },
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "ruleset_id": {
+          "title": "Ruleset Id",
+          "type": "string"
+        },
+        "source_replay_versions": {
+          "items": {
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+            "type": "string"
+          },
+          "title": "Source Replay Versions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract_type",
+        "dataset_id",
+        "dataset_version",
+        "ruleset_id",
+        "rules_version",
+        "observation_schema_version",
+        "observation_encoding_version",
+        "action_schema_version",
+        "action_encoding_version",
+        "source_replay_versions",
+        "record_count",
+        "artifact_sha256"
+      ],
+      "title": "DatasetManifest",
+      "type": "object"
+    },
+    "DatasetVersionReference": {
+      "additionalProperties": false,
+      "properties": {
+        "dataset_id": {
+          "title": "Dataset Id",
+          "type": "string"
+        },
+        "dataset_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Dataset Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "dataset_id",
+        "dataset_version"
+      ],
+      "title": "DatasetVersionReference",
+      "type": "object"
+    },
+    "DeckSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "card_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Card Ids",
+          "type": "array"
+        },
+        "deck_id": {
+          "title": "Deck Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "deck_id",
+        "version",
+        "card_ids"
+      ],
+      "title": "DeckSpec",
+      "type": "object"
+    },
+    "DeckState": {
+      "additionalProperties": false,
+      "properties": {
+        "discard_pile_card_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Discard Pile Card Ids",
+          "type": "array"
+        },
+        "draw_pile_card_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Draw Pile Card Ids",
+          "type": "array"
+        },
+        "trade_count": {
+          "minimum": 0,
+          "title": "Trade Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "draw_pile_card_ids",
+        "discard_pile_card_ids",
+        "trade_count"
+      ],
+      "title": "DeckState",
+      "type": "object"
+    },
+    "EndTurnOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "end_turn",
+          "title": "Action Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type"
+      ],
+      "title": "EndTurnOperation",
+      "type": "object"
+    },
+    "ExecutionReceipt": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_type": {
+          "const": "execution_receipt",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "error_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Error Code"
+        },
+        "event_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Ids",
+          "type": "array"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "intent_id": {
+          "title": "Intent Id",
+          "type": "string"
+        },
+        "state_version_after": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "State Version After"
+        },
+        "state_version_before": {
+          "minimum": 0,
+          "title": "State Version Before",
+          "type": "integer"
+        },
+        "status": {
+          "enum": [
+            "executed",
+            "rejected",
+            "uncertain"
+          ],
+          "title": "Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "intent_id",
+        "status",
+        "state_version_before",
+        "state_version_after",
+        "event_ids",
+        "evidence_ids",
+        "error_code"
+      ],
+      "title": "ExecutionReceipt",
+      "type": "object"
+    },
+    "FullGameState": {
+      "additionalProperties": false,
+      "properties": {
+        "active_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Active Player Id"
+        },
+        "contract_type": {
+          "const": "full_game_state",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "deck": {
+          "$ref": "#/$defs/DeckState"
+        },
+        "engine_random_state": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "is_finished": {
+          "title": "Is Finished",
+          "type": "boolean"
+        },
+        "phase_id": {
+          "title": "Phase Id",
+          "type": "string"
+        },
+        "players": {
+          "items": {
+            "$ref": "#/$defs/FullPlayerState"
+          },
+          "title": "Players",
+          "type": "array"
+        },
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "ruleset_id": {
+          "title": "Ruleset Id",
+          "type": "string"
+        },
+        "state_version": {
+          "minimum": 0,
+          "title": "State Version",
+          "type": "integer"
+        },
+        "territories": {
+          "items": {
+            "$ref": "#/$defs/TerritoryState"
+          },
+          "title": "Territories",
+          "type": "array"
+        },
+        "turn_number": {
+          "minimum": 0,
+          "title": "Turn Number",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contract_type",
+        "game_id",
+        "ruleset_id",
+        "rules_version",
+        "state_version",
+        "phase_id",
+        "turn_number",
+        "active_player_id",
+        "players",
+        "territories",
+        "deck",
+        "engine_random_state",
+        "is_finished"
+      ],
+      "title": "FullGameState",
+      "type": "object"
+    },
+    "FullPlayerState": {
+      "additionalProperties": false,
+      "properties": {
+        "private": {
+          "$ref": "#/$defs/PlayerPrivateState"
+        },
+        "public": {
+          "$ref": "#/$defs/PublicPlayerState"
+        }
+      },
+      "required": [
+        "public",
+        "private"
+      ],
+      "title": "FullPlayerState",
+      "type": "object"
+    },
+    "GameEvent": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Actor Player Id"
+        },
+        "contract_type": {
+          "const": "game_event",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "data": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Data",
+          "type": "object"
+        },
+        "event_id": {
+          "title": "Event Id",
+          "type": "string"
+        },
+        "event_type": {
+          "title": "Event Type",
+          "type": "string"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "occurred_at": {
+          "format": "date-time",
+          "title": "Occurred At",
+          "type": "string"
+        },
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "sequence_number": {
+          "minimum": 0,
+          "title": "Sequence Number",
+          "type": "integer"
+        },
+        "state_hash": {
+          "anyOf": [
+            {
+              "pattern": "^sha256:[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "State Hash"
+        },
+        "state_version": {
+          "minimum": 0,
+          "title": "State Version",
+          "type": "integer"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "private",
+            "engine"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        },
+        "visible_to_player_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Visible To Player Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract_type",
+        "event_id",
+        "game_id",
+        "sequence_number",
+        "state_version",
+        "rules_version",
+        "event_type",
+        "actor_player_id",
+        "visibility",
+        "occurred_at",
+        "data"
+      ],
+      "title": "GameEvent",
+      "type": "object"
+    },
+    "ImageRegion": {
+      "additionalProperties": false,
+      "properties": {
+        "frame_id": {
+          "title": "Frame Id",
+          "type": "string"
+        },
+        "height": {
+          "exclusiveMinimum": 0,
+          "title": "Height",
+          "type": "integer"
+        },
+        "region_id": {
+          "title": "Region Id",
+          "type": "string"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "title": "Width",
+          "type": "integer"
+        },
+        "x": {
+          "minimum": 0,
+          "title": "X",
+          "type": "integer"
+        },
+        "y": {
+          "minimum": 0,
+          "title": "Y",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "region_id",
+        "frame_id",
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "ImageRegion",
+      "type": "object"
+    },
+    "InferenceConfig": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_type": {
+          "const": "inference_config",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "decision_budget_ms": {
+          "exclusiveMinimum": 0,
+          "title": "Decision Budget Ms",
+          "type": "integer"
+        },
+        "inference_config_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Inference Config Version",
+          "type": "string"
+        },
+        "model_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Model Version",
+          "type": "string"
+        },
+        "sampling_configuration": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Sampling Configuration",
+          "type": "object"
+        },
+        "search_configuration": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Search Configuration",
+          "type": "object"
+        }
+      },
+      "required": [
+        "contract_type",
+        "inference_config_version",
+        "model_version",
+        "decision_budget_ms",
+        "search_configuration",
+        "sampling_configuration"
+      ],
+      "title": "InferenceConfig",
+      "type": "object"
+    },
+    "JsonValue": {},
+    "KnownFact": {
+      "additionalProperties": false,
+      "properties": {
+        "fact_id": {
+          "title": "Fact Id",
+          "type": "string"
+        },
+        "known_at": {
+          "format": "date-time",
+          "title": "Known At",
+          "type": "string"
+        },
+        "predicate": {
+          "title": "Predicate",
+          "type": "string"
+        },
+        "source_event_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Source Event Id"
+        },
+        "subject_id": {
+          "title": "Subject Id",
+          "type": "string"
+        },
+        "value": {
+          "$ref": "#/$defs/JsonValue"
+        }
+      },
+      "required": [
+        "fact_id",
+        "subject_id",
+        "predicate",
+        "value",
+        "source_event_id",
+        "known_at"
+      ],
+      "title": "KnownFact",
+      "type": "object"
+    },
+    "MapSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "adjacencies": {
+          "items": {
+            "$ref": "#/$defs/Adjacency"
+          },
+          "title": "Adjacencies",
+          "type": "array"
+        },
+        "continents": {
+          "items": {
+            "$ref": "#/$defs/ContinentDefinition"
+          },
+          "title": "Continents",
+          "type": "array"
+        },
+        "map_id": {
+          "title": "Map Id",
+          "type": "string"
+        },
+        "territories": {
+          "items": {
+            "$ref": "#/$defs/TerritoryDefinition"
+          },
+          "title": "Territories",
+          "type": "array"
+        },
+        "version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "map_id",
+        "version",
+        "territories",
+        "continents",
+        "adjacencies"
+      ],
+      "title": "MapSpec",
+      "type": "object"
+    },
+    "MoveArmiesOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "move_armies",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "army_count": {
+          "exclusiveMinimum": 0,
+          "title": "Army Count",
+          "type": "integer"
+        },
+        "origin_territory_id": {
+          "title": "Origin Territory Id",
+          "type": "string"
+        },
+        "target_territory_id": {
+          "title": "Target Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "origin_territory_id",
+        "target_territory_id",
+        "army_count"
+      ],
+      "title": "MoveArmiesOperation",
+      "type": "object"
+    },
+    "ObjectiveDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "certified_rule_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Certified Rule Ids",
+          "type": "array"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "objective_id": {
+          "title": "Objective Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "objective_id",
+        "description",
+        "certified_rule_ids"
+      ],
+      "title": "ObjectiveDefinition",
+      "type": "object"
+    },
+    "ObservedBoard": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "observed_board",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "geometry_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Geometry Version",
+          "type": "string"
+        },
+        "image_regions": {
+          "items": {
+            "$ref": "#/$defs/ImageRegion"
+          },
+          "title": "Image Regions",
+          "type": "array"
+        },
+        "observation_id": {
+          "title": "Observation Id",
+          "type": "string"
+        },
+        "source": {
+          "enum": [
+            "camera",
+            "site",
+            "manual"
+          ],
+          "title": "Source",
+          "type": "string"
+        },
+        "state_version": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "State Version"
+        },
+        "territories": {
+          "items": {
+            "$ref": "#/$defs/ObservedTerritory"
+          },
+          "title": "Territories",
+          "type": "array"
+        }
+      },
+      "required": [
+        "contract_type",
+        "observation_id",
+        "captured_at",
+        "source",
+        "geometry_version",
+        "state_version",
+        "territories",
+        "image_regions"
+      ],
+      "title": "ObservedBoard",
+      "type": "object"
+    },
+    "ObservedTerritory": {
+      "additionalProperties": false,
+      "properties": {
+        "army_count": {
+          "$ref": "#/$defs/ObservedValue_Annotated_int__FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____"
+        },
+        "evidence_region_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Region Ids",
+          "type": "array"
+        },
+        "owner": {
+          "$ref": "#/$defs/ObservedValue_str_"
+        },
+        "territory_id": {
+          "title": "Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "territory_id",
+        "owner",
+        "army_count",
+        "evidence_region_ids"
+      ],
+      "title": "ObservedTerritory",
+      "type": "object"
+    },
+    "ObservedValue_Annotated_int__FieldInfo_annotation_NoneType__required_True__metadata__Ge_ge_0_____": {
+      "additionalProperties": false,
+      "properties": {
+        "alternatives": {
+          "default": [],
+          "items": {
+            "minimum": 0,
+            "type": "integer"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "status": {
+          "enum": [
+            "known",
+            "unknown",
+            "ambiguous"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ObservedValue[Annotated[int, FieldInfo(annotation=NoneType, required=True, metadata=[Ge(ge=0)])]]",
+      "type": "object"
+    },
+    "ObservedValue_str_": {
+      "additionalProperties": false,
+      "properties": {
+        "alternatives": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "maximum": 1.0,
+              "minimum": 0.0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Confidence"
+        },
+        "status": {
+          "enum": [
+            "known",
+            "unknown",
+            "ambiguous"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Value"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "ObservedValue[str]",
+      "type": "object"
+    },
+    "OccupyTerritoryOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "occupy_territory",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "army_count": {
+          "exclusiveMinimum": 0,
+          "title": "Army Count",
+          "type": "integer"
+        },
+        "origin_territory_id": {
+          "title": "Origin Territory Id",
+          "type": "string"
+        },
+        "target_territory_id": {
+          "title": "Target Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "origin_territory_id",
+        "target_territory_id",
+        "army_count"
+      ],
+      "title": "OccupyTerritoryOperation",
+      "type": "object"
+    },
+    "PlaceArmiesOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "place_armies",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "placement_phase": {
+          "enum": [
+            "initial",
+            "reinforcement"
+          ],
+          "title": "Placement Phase",
+          "type": "string"
+        },
+        "placements": {
+          "items": {
+            "$ref": "#/$defs/ArmyPlacement"
+          },
+          "minItems": 1,
+          "title": "Placements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action_type",
+        "placements",
+        "placement_phase"
+      ],
+      "title": "PlaceArmiesOperation",
+      "type": "object"
+    },
+    "PlayerKnowledgeState": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_type": {
+          "const": "player_knowledge_state",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "known_facts": {
+          "items": {
+            "$ref": "#/$defs/KnownFact"
+          },
+          "title": "Known Facts",
+          "type": "array"
+        },
+        "player_id": {
+          "title": "Player Id",
+          "type": "string"
+        },
+        "state_version": {
+          "minimum": 0,
+          "title": "State Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contract_type",
+        "game_id",
+        "player_id",
+        "state_version",
+        "known_facts"
+      ],
+      "title": "PlayerKnowledgeState",
+      "type": "object"
+    },
+    "PlayerObservation": {
+      "additionalProperties": false,
+      "properties": {
+        "contract_type": {
+          "const": "player_observation",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "legal_actions": {
+          "items": {
+            "$ref": "#/$defs/Action"
+          },
+          "title": "Legal Actions",
+          "type": "array"
+        },
+        "observation_schema_version": {
+          "const": "1.0.0",
+          "title": "Observation Schema Version",
+          "type": "string"
+        },
+        "player_id": {
+          "title": "Player Id",
+          "type": "string"
+        },
+        "private_state": {
+          "$ref": "#/$defs/PlayerPrivateState"
+        },
+        "public_state": {
+          "$ref": "#/$defs/PublicGameState"
+        },
+        "recent_events": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/GameEvent"
+          },
+          "title": "Recent Events",
+          "type": "array"
+        },
+        "state_version": {
+          "minimum": 0,
+          "title": "State Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contract_type",
+        "game_id",
+        "player_id",
+        "observation_schema_version",
+        "state_version",
+        "public_state",
+        "private_state",
+        "legal_actions"
+      ],
+      "title": "PlayerObservation",
+      "type": "object"
+    },
+    "PlayerPrivateState": {
+      "additionalProperties": false,
+      "properties": {
+        "hand_card_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Hand Card Ids",
+          "type": "array"
+        },
+        "objective_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Objective Id"
+        },
+        "player_id": {
+          "title": "Player Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "player_id",
+        "objective_id",
+        "hand_card_ids"
+      ],
+      "title": "PlayerPrivateState",
+      "type": "object"
+    },
+    "Point2D": {
+      "additionalProperties": false,
+      "properties": {
+        "x": {
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ],
+      "title": "Point2D",
+      "type": "object"
+    },
+    "PolicyManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "action_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Encoding Version",
+          "type": "string"
+        },
+        "action_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Schema Version",
+          "type": "string"
+        },
+        "compatible_rulesets": {
+          "items": {
+            "$ref": "#/$defs/RulesetVersionReference"
+          },
+          "title": "Compatible Rulesets",
+          "type": "array"
+        },
+        "contract_type": {
+          "const": "policy_manifest",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "dataset_versions": {
+          "items": {
+            "$ref": "#/$defs/DatasetVersionReference"
+          },
+          "title": "Dataset Versions",
+          "type": "array"
+        },
+        "inference_config_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Inference Config Version",
+          "type": "string"
+        },
+        "model_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Model Version",
+          "type": "string"
+        },
+        "observation_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Encoding Version",
+          "type": "string"
+        },
+        "observation_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Schema Version",
+          "type": "string"
+        },
+        "policy_id": {
+          "title": "Policy Id",
+          "type": "string"
+        },
+        "policy_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Policy Version",
+          "type": "string"
+        },
+        "replay_versions": {
+          "items": {
+            "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+            "type": "string"
+          },
+          "title": "Replay Versions",
+          "type": "array"
+        },
+        "sampling_configuration": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Sampling Configuration",
+          "type": "object"
+        },
+        "search_configuration": {
+          "additionalProperties": {
+            "$ref": "#/$defs/JsonValue"
+          },
+          "title": "Search Configuration",
+          "type": "object"
+        },
+        "weights_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Weights Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "policy_id",
+        "policy_version",
+        "model_version",
+        "weights_sha256",
+        "compatible_rulesets",
+        "observation_schema_version",
+        "observation_encoding_version",
+        "action_schema_version",
+        "action_encoding_version",
+        "replay_versions",
+        "dataset_versions",
+        "inference_config_version",
+        "search_configuration",
+        "sampling_configuration"
+      ],
+      "title": "PolicyManifest",
+      "type": "object"
+    },
+    "PublicGameState": {
+      "additionalProperties": false,
+      "properties": {
+        "active_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Active Player Id"
+        },
+        "contract_type": {
+          "const": "public_game_state",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "is_finished": {
+          "title": "Is Finished",
+          "type": "boolean"
+        },
+        "phase_id": {
+          "title": "Phase Id",
+          "type": "string"
+        },
+        "players": {
+          "items": {
+            "$ref": "#/$defs/PublicPlayerState"
+          },
+          "title": "Players",
+          "type": "array"
+        },
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "ruleset_id": {
+          "title": "Ruleset Id",
+          "type": "string"
+        },
+        "state_version": {
+          "minimum": 0,
+          "title": "State Version",
+          "type": "integer"
+        },
+        "territories": {
+          "items": {
+            "$ref": "#/$defs/TerritoryState"
+          },
+          "title": "Territories",
+          "type": "array"
+        },
+        "turn_number": {
+          "minimum": 0,
+          "title": "Turn Number",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "contract_type",
+        "game_id",
+        "ruleset_id",
+        "rules_version",
+        "state_version",
+        "phase_id",
+        "turn_number",
+        "active_player_id",
+        "players",
+        "territories",
+        "is_finished"
+      ],
+      "title": "PublicGameState",
+      "type": "object"
+    },
+    "PublicPlayerState": {
+      "additionalProperties": false,
+      "properties": {
+        "army_count": {
+          "minimum": 0,
+          "title": "Army Count",
+          "type": "integer"
+        },
+        "color": {
+          "title": "Color",
+          "type": "string"
+        },
+        "is_eliminated": {
+          "title": "Is Eliminated",
+          "type": "boolean"
+        },
+        "player_id": {
+          "title": "Player Id",
+          "type": "string"
+        },
+        "territory_count": {
+          "minimum": 0,
+          "title": "Territory Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "player_id",
+        "color",
+        "territory_count",
+        "army_count",
+        "is_eliminated"
+      ],
+      "title": "PublicPlayerState",
+      "type": "object"
+    },
+    "ReplayManifest": {
+      "additionalProperties": false,
+      "properties": {
+        "action_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Schema Version",
+          "type": "string"
+        },
+        "api_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Api Version",
+          "type": "string"
+        },
+        "artifact_sha256": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "contract_schema_version": {
+          "title": "Contract Schema Version",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "replay_manifest",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "event_count": {
+          "minimum": 0,
+          "title": "Event Count",
+          "type": "integer"
+        },
+        "replay_id": {
+          "title": "Replay Id",
+          "type": "string"
+        },
+        "replay_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Replay Version",
+          "type": "string"
+        },
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "ruleset_id": {
+          "title": "Ruleset Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "replay_id",
+        "replay_version",
+        "api_version",
+        "contract_schema_version",
+        "ruleset_id",
+        "rules_version",
+        "action_schema_version",
+        "event_count",
+        "artifact_sha256"
+      ],
+      "title": "ReplayManifest",
+      "type": "object"
+    },
+    "RulesetSpec": {
+      "additionalProperties": false,
+      "properties": {
+        "certified_rule_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Certified Rule Ids",
+          "type": "array"
+        },
+        "contract_type": {
+          "const": "ruleset_spec",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "decks": {
+          "items": {
+            "$ref": "#/$defs/DeckSpec"
+          },
+          "title": "Decks",
+          "type": "array"
+        },
+        "edition_id": {
+          "title": "Edition Id",
+          "type": "string"
+        },
+        "formulas": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Formulas",
+          "type": "object"
+        },
+        "map": {
+          "$ref": "#/$defs/MapSpec"
+        },
+        "objectives": {
+          "items": {
+            "$ref": "#/$defs/ObjectiveDefinition"
+          },
+          "title": "Objectives",
+          "type": "array"
+        },
+        "phases": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Phases",
+          "type": "array"
+        },
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "ruleset_id": {
+          "title": "Ruleset Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "ruleset_id",
+        "edition_id",
+        "rules_version",
+        "map",
+        "decks",
+        "objectives",
+        "phases",
+        "formulas",
+        "certified_rule_ids"
+      ],
+      "title": "RulesetSpec",
+      "type": "object"
+    },
+    "RulesetVersionReference": {
+      "additionalProperties": false,
+      "properties": {
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "ruleset_id": {
+          "title": "Ruleset Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ruleset_id",
+        "rules_version"
+      ],
+      "title": "RulesetVersionReference",
+      "type": "object"
+    },
+    "SemanticVersionVector": {
+      "additionalProperties": false,
+      "properties": {
+        "action_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Encoding Version",
+          "type": "string"
+        },
+        "action_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Action Schema Version",
+          "type": "string"
+        },
+        "api_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Api Version",
+          "type": "string"
+        },
+        "contract_schema_version": {
+          "title": "Contract Schema Version",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "semantic_version_vector",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "dataset_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Dataset Version",
+          "type": "string"
+        },
+        "geometry_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Geometry Version",
+          "type": "string"
+        },
+        "inference_config_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Inference Config Version",
+          "type": "string"
+        },
+        "model_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Model Version",
+          "type": "string"
+        },
+        "observation_encoding_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Encoding Version",
+          "type": "string"
+        },
+        "observation_schema_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Observation Schema Version",
+          "type": "string"
+        },
+        "replay_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Replay Version",
+          "type": "string"
+        },
+        "rules_version": {
+          "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
+          "title": "Rules Version",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "rules_version",
+        "api_version",
+        "contract_schema_version",
+        "observation_schema_version",
+        "observation_encoding_version",
+        "action_schema_version",
+        "action_encoding_version",
+        "replay_version",
+        "dataset_version",
+        "model_version",
+        "inference_config_version",
+        "geometry_version"
+      ],
+      "title": "SemanticVersionVector",
+      "type": "object"
+    },
+    "Snapshot": {
+      "additionalProperties": false,
+      "properties": {
+        "captured_at": {
+          "format": "date-time",
+          "title": "Captured At",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "snapshot",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "game_id": {
+          "title": "Game Id",
+          "type": "string"
+        },
+        "snapshot_id": {
+          "title": "Snapshot Id",
+          "type": "string"
+        },
+        "state": {
+          "discriminator": {
+            "mapping": {
+              "full_game_state": "#/$defs/FullGameState",
+              "player_observation": "#/$defs/PlayerObservation",
+              "public_game_state": "#/$defs/PublicGameState"
+            },
+            "propertyName": "contract_type"
+          },
+          "oneOf": [
+            {
+              "$ref": "#/$defs/PublicGameState"
+            },
+            {
+              "$ref": "#/$defs/FullGameState"
+            },
+            {
+              "$ref": "#/$defs/PlayerObservation"
+            }
+          ],
+          "title": "State"
+        },
+        "state_hash": {
+          "pattern": "^sha256:[0-9a-f]{64}$",
+          "title": "State Hash",
+          "type": "string"
+        },
+        "state_version": {
+          "minimum": 0,
+          "title": "State Version",
+          "type": "integer"
+        },
+        "subject_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Subject Player Id"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "full",
+            "player_private"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "snapshot_id",
+        "game_id",
+        "state_version",
+        "captured_at",
+        "visibility",
+        "subject_player_id",
+        "state",
+        "state_hash"
+      ],
+      "title": "Snapshot",
+      "type": "object"
+    },
+    "TerritoryDefinition": {
+      "additionalProperties": false,
+      "properties": {
+        "aliases": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Aliases",
+          "type": "array"
+        },
+        "canonical_name": {
+          "title": "Canonical Name",
+          "type": "string"
+        },
+        "continent_id": {
+          "title": "Continent Id",
+          "type": "string"
+        },
+        "territory_id": {
+          "title": "Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "territory_id",
+        "canonical_name",
+        "continent_id"
+      ],
+      "title": "TerritoryDefinition",
+      "type": "object"
+    },
+    "TerritoryGeometry": {
+      "additionalProperties": false,
+      "properties": {
+        "center": {
+          "$ref": "#/$defs/Point2D"
+        },
+        "label_anchor": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Point2D"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "polygon": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Point2D"
+          },
+          "title": "Polygon",
+          "type": "array"
+        },
+        "territory_id": {
+          "title": "Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "territory_id",
+        "center"
+      ],
+      "title": "TerritoryGeometry",
+      "type": "object"
+    },
+    "TerritoryState": {
+      "additionalProperties": false,
+      "properties": {
+        "army_count": {
+          "minimum": 0,
+          "title": "Army Count",
+          "type": "integer"
+        },
+        "owner_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Owner Player Id"
+        },
+        "territory_id": {
+          "title": "Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "territory_id",
+        "owner_player_id",
+        "army_count"
+      ],
+      "title": "TerritoryState",
+      "type": "object"
+    },
+    "TradeCardsOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "trade_cards",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "card_ids": {
+          "maxItems": 3,
+          "minItems": 3,
+          "prefixItems": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "string"
+            }
+          ],
+          "title": "Card Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "action_type",
+        "card_ids"
+      ],
+      "title": "TradeCardsOperation",
+      "type": "object"
+    }
+  },
+  "$id": "urn:war:contracts:1.0",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "api_version": {
+      "const": "1.0.0",
+      "title": "Api Version",
+      "type": "string"
+    },
+    "payload": {
+      "discriminator": {
+        "mapping": {
+          "ack": "#/$defs/Ack",
+          "action": "#/$defs/Action",
+          "action_intent": "#/$defs/ActionIntent",
+          "agent_protocol": "#/$defs/AgentProtocol",
+          "belief_state": "#/$defs/BeliefState",
+          "board_geometry": "#/$defs/BoardGeometry",
+          "certificate_manifest": "#/$defs/CertificateManifest",
+          "chance_outcome": "#/$defs/ChanceOutcome",
+          "chance_request": "#/$defs/ChanceRequest",
+          "dataset_manifest": "#/$defs/DatasetManifest",
+          "execution_receipt": "#/$defs/ExecutionReceipt",
+          "full_game_state": "#/$defs/FullGameState",
+          "game_event": "#/$defs/GameEvent",
+          "inference_config": "#/$defs/InferenceConfig",
+          "observed_board": "#/$defs/ObservedBoard",
+          "player_knowledge_state": "#/$defs/PlayerKnowledgeState",
+          "player_observation": "#/$defs/PlayerObservation",
+          "policy_manifest": "#/$defs/PolicyManifest",
+          "public_game_state": "#/$defs/PublicGameState",
+          "replay_manifest": "#/$defs/ReplayManifest",
+          "ruleset_spec": "#/$defs/RulesetSpec",
+          "semantic_version_vector": "#/$defs/SemanticVersionVector",
+          "snapshot": "#/$defs/Snapshot"
+        },
+        "propertyName": "contract_type"
+      },
+      "oneOf": [
+        {
+          "$ref": "#/$defs/RulesetSpec"
+        },
+        {
+          "$ref": "#/$defs/FullGameState"
+        },
+        {
+          "$ref": "#/$defs/PublicGameState"
+        },
+        {
+          "$ref": "#/$defs/PlayerObservation"
+        },
+        {
+          "$ref": "#/$defs/ObservedBoard"
+        },
+        {
+          "$ref": "#/$defs/BoardGeometry"
+        },
+        {
+          "$ref": "#/$defs/PlayerKnowledgeState"
+        },
+        {
+          "$ref": "#/$defs/BeliefState"
+        },
+        {
+          "$ref": "#/$defs/Action"
+        },
+        {
+          "$ref": "#/$defs/ChanceRequest"
+        },
+        {
+          "$ref": "#/$defs/ChanceOutcome"
+        },
+        {
+          "$ref": "#/$defs/GameEvent"
+        },
+        {
+          "$ref": "#/$defs/Snapshot"
+        },
+        {
+          "$ref": "#/$defs/AgentProtocol"
+        },
+        {
+          "$ref": "#/$defs/ActionIntent"
+        },
+        {
+          "$ref": "#/$defs/ExecutionReceipt"
+        },
+        {
+          "$ref": "#/$defs/Ack"
+        },
+        {
+          "$ref": "#/$defs/PolicyManifest"
+        },
+        {
+          "$ref": "#/$defs/ReplayManifest"
+        },
+        {
+          "$ref": "#/$defs/DatasetManifest"
+        },
+        {
+          "$ref": "#/$defs/InferenceConfig"
+        },
+        {
+          "$ref": "#/$defs/SemanticVersionVector"
+        },
+        {
+          "$ref": "#/$defs/CertificateManifest"
+        }
+      ],
+      "title": "Payload"
+    },
+    "schema_version": {
+      "const": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "schema_version",
+    "api_version",
+    "payload"
+  ],
+  "title": "ContractEnvelope",
+  "type": "object"
+}

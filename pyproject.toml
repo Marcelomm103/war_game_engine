@@ -1,0 +1,47 @@
+[build-system]
+requires = ["setuptools==75.8.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "war-game-engine"
+version = "0.1.0"
+description = "Reference rules engine for the WAR board game"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "numpy==2.2.6",
+    "pydantic==2.14.1",
+]
+
+[project.optional-dependencies]
+test = [
+    "hypothesis==6.130.2",
+    "pytest==9.0.3",
+]
+quality = [
+    "mypy==2.4.0",
+    "mutmut==3.8.0",
+    "ruff==0.17.1",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+war_game_engine = ["schemas/*.json"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[tool.mypy]
+files = ["src", "tests"]
+python_version = "3.10"
+strict = true
+
+[tool.mutmut]
+source_paths = ["src/war_game_engine/"]
+pytest_add_cli_args_test_selection = ["tests/"]

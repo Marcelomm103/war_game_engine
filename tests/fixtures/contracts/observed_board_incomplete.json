@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "api_version": "1.0.0",
+  "payload": {
+    "contract_type": "observed_board",
+    "observation_id": "capture-1",
+    "captured_at": "2026-10-21T12:00:00Z",
+    "source": "camera",
+    "geometry_version": "1.0.0",
+    "state_version": null,
+    "territories": [
+      {
+        "territory_id": "T01",
+        "owner": {
+          "status": "known",
+          "value": "blue",
+          "confidence": 0.99
+        },
+        "army_count": {
+          "status": "unknown"
+        },
+        "evidence_region_ids": ["region-1"]
+      },
+      {
+        "territory_id": "T02",
+        "owner": {
+          "status": "ambiguous",
+          "confidence": 0.55,
+          "alternatives": ["red", "green"]
+        },
+        "army_count": {
+          "status": "known",
+          "value": 2,
+          "confidence": 0.9
+        },
+        "evidence_region_ids": ["region-2"]
+      }
+    ],
+    "image_regions": [
+      {
+        "region_id": "region-1",
+        "frame_id": "frame-1",
+        "x": 100,
+        "y": 200,
+        "width": 40,
+        "height": 40
+      },
+      {
+        "region_id": "region-2",
+        "frame_id": "frame-1",
+        "x": 150,
+        "y": 240,
+        "width": 40,
+        "height": 40
+      }
+    ]
+  }
+}

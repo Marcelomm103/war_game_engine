@@ -1,0 +1,87 @@
+{
+  "schema_version": "1.0",
+  "api_version": "1.0.0",
+  "payload": {
+    "contract_type": "player_observation",
+    "game_id": "game-private-example",
+    "player_id": "player-1",
+    "observation_schema_version": "1.0.0",
+    "state_version": 1,
+    "public_state": {
+      "contract_type": "public_game_state",
+      "game_id": "game-private-example",
+      "ruleset_id": "war1-classic",
+      "rules_version": "1.0.0",
+      "state_version": 1,
+      "phase_id": "initial_placement",
+      "turn_number": 1,
+      "active_player_id": "player-1",
+      "players": [
+        {
+          "player_id": "player-1",
+          "color": "blue",
+          "territory_count": 1,
+          "army_count": 1,
+          "is_eliminated": false
+        },
+        {
+          "player_id": "player-2",
+          "color": "red",
+          "territory_count": 1,
+          "army_count": 1,
+          "is_eliminated": false
+        },
+        {
+          "player_id": "player-3",
+          "color": "green",
+          "territory_count": 1,
+          "army_count": 1,
+          "is_eliminated": false
+        }
+      ],
+      "territories": [
+        {
+          "territory_id": "T01",
+          "owner_player_id": "player-1",
+          "army_count": 1
+        },
+        {
+          "territory_id": "T02",
+          "owner_player_id": "player-2",
+          "army_count": 1
+        },
+        {
+          "territory_id": "T03",
+          "owner_player_id": "player-3",
+          "army_count": 1
+        }
+      ],
+      "is_finished": false
+    },
+    "private_state": {
+      "player_id": "player-1",
+      "objective_id": "objective-05",
+      "hand_card_ids": ["card-08"]
+    },
+    "legal_actions": [
+      {
+        "contract_type": "action",
+        "action_id": "action-1",
+        "actor_player_id": "player-1",
+        "action_schema_version": "1.0.0",
+        "expected_state_version": 1,
+        "operation": {
+          "action_type": "place_armies",
+          "placements": [
+            {
+              "territory_id": "T01",
+              "army_count": 1
+            }
+          ],
+          "placement_phase": "initial"
+        }
+      }
+    ],
+    "recent_events": []
+  }
+}

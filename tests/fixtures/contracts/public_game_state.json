@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "api_version": "1.0.0",
+  "payload": {
+    "contract_type": "public_game_state",
+    "game_id": "game-public-example",
+    "ruleset_id": "war1-classic",
+    "rules_version": "1.0.0",
+    "state_version": 7,
+    "phase_id": "initial_placement",
+    "turn_number": 1,
+    "active_player_id": "player-1",
+    "players": [
+      {
+        "player_id": "player-1",
+        "color": "blue",
+        "territory_count": 1,
+        "army_count": 2,
+        "is_eliminated": false
+      },
+      {
+        "player_id": "player-2",
+        "color": "red",
+        "territory_count": 1,
+        "army_count": 1,
+        "is_eliminated": false
+      },
+      {
+        "player_id": "player-3",
+        "color": "green",
+        "territory_count": 1,
+        "army_count": 1,
+        "is_eliminated": false
+      }
+    ],
+    "territories": [
+      {
+        "territory_id": "T01",
+        "owner_player_id": "player-1",
+        "army_count": 2
+      },
+      {
+        "territory_id": "T02",
+        "owner_player_id": "player-2",
+        "army_count": 1
+      },
+      {
+        "territory_id": "T03",
+        "owner_player_id": "player-3",
+        "army_count": 1
+      }
+    ],
+    "is_finished": false
+  }
+}
