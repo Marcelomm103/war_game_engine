@@ -15,6 +15,18 @@ from .versioning import OBSERVATION_SCHEMA_VERSION
 
 
 def to_public_game_state(state: FullGameState) -> PublicGameState:
+    winner = next(
+        (
+            player
+            for player in state.players
+            if player.public.player_id == state.winner_player_id
+        ),
+        None,
+    )
+    if state.winner_player_id is not None and winner is None:
+        raise ValueError(
+            f"Winner player {state.winner_player_id!r} is absent from the state."
+        )
     return PublicGameState(
         contract_type="public_game_state",
         game_id=state.game_id,
@@ -23,6 +35,9 @@ def to_public_game_state(state: FullGameState) -> PublicGameState:
         state_version=state.state_version,
         phase_id=state.phase_id,
         turn_number=state.turn_number,
+        has_conquered_territory_this_turn=(
+            state.has_conquered_territory_this_turn
+        ),
         active_player_id=state.active_player_id,
         turn_player_id=state.turn_player_id,
         decision_player_id=state.decision_player_id,
@@ -31,6 +46,21 @@ def to_public_game_state(state: FullGameState) -> PublicGameState:
         territories=state.territories,
         reinforcement_pools=state.reinforcement_pools,
         movement_control=state.movement_control,
+        pending_combat=state.pending_combat,
+        pending_occupation=state.pending_occupation,
+        pending_objective_check=state.pending_objective_check,
+        applied_chance_outcomes=tuple(
+            outcome
+            for outcome in state.applied_chance_outcomes
+            if outcome.visibility == "public"
+        ),
+        winner_player_id=state.winner_player_id,
+        winner_objective_id=(
+            winner.private.objective_id if winner is not None else None
+        ),
+        winner_objective_fallback_id=(
+            winner.private.objective_fallback_id if winner is not None else None
+        ),
         is_finished=state.is_finished,
     )
 

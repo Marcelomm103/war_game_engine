@@ -5,11 +5,13 @@ from pydantic import ValidationError
 
 from war_game_engine.contracts import (
     Action,
+    AppliedChanceOutcome,
     DeckState,
     EndTurnOperation,
     FullGameState,
     FullPlayerState,
     GameEvent,
+    GamePhaseId,
     MovementControl,
     MovementTransfer,
     PlayerPrivateState,
@@ -20,12 +22,15 @@ from war_game_engine.contracts import (
 )
 from war_game_engine.randomness import RandomStreams
 from war_game_engine.state import observe_player, to_public_game_state
+from war_game_engine.versioning import ACTION_SCHEMA_VERSION
 
 
 def _full_state(
     *,
     state_version: int = 7,
     turn_number: int = 3,
+    phase_id: GamePhaseId = "attack",
+    has_conquered_territory_this_turn: bool = False,
     decision_player_id: str | None = "player-1",
 ) -> FullGameState:
     players = (
@@ -76,8 +81,9 @@ def _full_state(
         ruleset_id="war1-classic",
         rules_version="1.0.0",
         state_version=state_version,
-        phase_id="combat",
+        phase_id=phase_id,
         turn_number=turn_number,
+        has_conquered_territory_this_turn=has_conquered_territory_this_turn,
         active_player_id="player-1",
         turn_player_id="player-1",
         decision_player_id=decision_player_id,
@@ -111,6 +117,44 @@ def test_state_keeps_turn_player_and_decision_player_separate() -> None:
     assert public.turn_player_id == "player-1"
     assert public.decision_player_id == "player-2"
     assert public.active_player_id == "player-1"
+
+
+def test_public_state_preserves_turn_conquest_status() -> None:
+    state = _full_state(
+        phase_id="card_purchase",
+        has_conquered_territory_this_turn=True,
+    )
+
+    public = to_public_game_state(state)
+
+    assert public.has_conquered_territory_this_turn is True
+
+
+def test_public_state_exposes_only_public_chance_outcome_ids() -> None:
+    state = _full_state()
+    state_data = state.model_dump(mode="python")
+    state_data["applied_chance_outcomes"] = (
+        AppliedChanceOutcome(
+            request_id="private-request",
+            event_id="private-event",
+            visibility="private",
+            outcome_source="site",
+        ),
+        AppliedChanceOutcome(
+            request_id="public-request",
+            event_id="public-event",
+            visibility="public",
+            outcome_source="physical_board",
+        ),
+    )
+    state_with_outcomes = FullGameState.model_validate(state_data)
+
+    public = to_public_game_state(state_with_outcomes)
+
+    assert tuple(outcome.event_id for outcome in public.applied_chance_outcomes) == (
+        "public-event",
+    )
+    assert "private-event" not in public.model_dump_json()
 
 
 def test_player_observation_contains_only_its_private_data() -> None:
@@ -203,7 +247,7 @@ def test_non_decision_player_cannot_receive_legal_actions() -> None:
         contract_type="action",
         action_id="action-1",
         actor_player_id="player-1",
-        action_schema_version="1.0.0",
+        action_schema_version=ACTION_SCHEMA_VERSION,
         expected_state_version=state.state_version,
         operation=EndTurnOperation(action_type="end_turn"),
     )
@@ -317,7 +361,7 @@ def test_private_hands_and_deck_zones_reject_duplicate_cards() -> None:
             objective_id="objective-1",
             hand_card_ids=("same-card", "same-card"),
         )
-    with pytest.raises(ValidationError, match="Draw and discard card IDs"):
+    with pytest.raises(ValidationError, match="Card IDs across deck zones"):
         DeckState(
             draw_pile_card_ids=("same-card",),
             discard_pile_card_ids=("same-card",),

@@ -3,6 +3,9 @@ Repository containing the game engine of the boardgame war (risk)
 
 ## Install
 
+This package requires Python 3.11 or newer. CI and the aggregate development
+container use Python 3.11.
+
 The package uses a `src` layout and is imported as `war_game_engine`.
 Install the runtime package and its test tools from this directory:
 
@@ -63,10 +66,39 @@ public or player-scoped data; these
 projections omit the RNG state and other players' private data.
 
 `war_game_engine.engine` exposes pure `validate_action()`, `legal_actions()`,
-and `apply_action()` APIs for territory claims and initial/reinforcement
-placement. Other turn phases fail explicitly as unsupported until Phase 3.
+and `apply_action()` APIs for territory claims, initial placement, explicit
+phase completion, and turn advancement. Completing initial placement starts
+round two with the first player in the certified order. Turn advancement skips
+eliminated players and increments the round when play wraps to the beginning
+of that order. The phase IDs are typed; card purchase is reachable after
+movement only when a conquest occurred in that turn, and finished states
+cannot accept actions.
+
+The Phase 3.1 machine is the foundation for the remaining turn rules. Phase 3.2
+adds turn reinforcement pools, card-set validation and rewards, purchase after
+conquest, and the distinct hand-limit discard zone. Phase 3.3 validates attack
+choices before issuing a fixed-dice `ChanceRequest`, resolves one public
+`ChanceOutcome` at a time, and enumerates exact loss distributions. A defeated
+territory is handed to a pending occupation decision. Phase 3.4 validates that
+transfer, records elimination attribution and objective fallback, and pauses
+at `objective_check` before another action is offered. Movement and objective
+evaluation are handled in their own roadmap steps. Phase 3.5 validates direct
+allied movement, garrisons, and the per-army movement ledger, pausing for
+objective checks after each transfer. Phase 3.6 adds typed evaluators for the
+certified objective catalog, immediate checks, simultaneous-winner
+adjudication without an invented tie-break, and winner-only objective reveal
+in public state. Elimination hand transfer and random over-limit discards run
+after that adjudication, so a winning attacker does not receive the cards.
 `war_game_engine.replay` provides canonical state hashes, versioned snapshots,
 state/RNG restoration, and separate full and sanitized public replay contracts.
+Phase 3.7 distinguishes simulated outcomes from site and physical-board
+observations. Chance request/event IDs are retained and deduplicated in state
+and replay; observed dice cannot advance the engine RNG, and combat accepts
+only the exact faces requested rather than inferred aggregate losses.
+Phase 3.8 labels replay endings as official victory, individual elimination,
+resignation, operational interruption, or training truncation. Non-victory
+endings must match a non-winning state; an episode limit cannot create a
+winner.
 
 Independent semantic versions and certificate invalidation are defined in
 `war_game_engine.versioning`. A changed version invalidates only certificates

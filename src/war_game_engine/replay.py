@@ -12,12 +12,16 @@ from .contracts import (
     ChanceOutcome,
     FullGameState,
     FullReplay,
+    IndividualEliminationOutcome,
+    OfficialVictoryOutcome,
     PlayerObservation,
     PublicGameState,
     PublicReplay,
     ReplayActionEntry,
     ReplayChanceEntry,
     ReplayEntry,
+    ReplayOutcome,
+    ResignationOutcome,
     Snapshot,
 )
 from .randomness import RandomStreams
@@ -64,6 +68,7 @@ class RestoredSnapshot:
 class ReplayExecutionResult:
     state: FullGameState | PublicGameState
     random_streams: RandomStreams | None
+    outcome: ReplayOutcome | None = None
 
 
 def create_snapshot(
@@ -145,14 +150,79 @@ def restore_snapshot(
     return RestoredSnapshot(state=restored_observation, random_streams=None)
 
 
+def _player_is_eliminated(
+    state: FullGameState | PublicGameState,
+    player_id: str,
+) -> bool | None:
+    if isinstance(state, FullGameState):
+        player = next(
+            (
+                player.public
+                for player in state.players
+                if player.public.player_id == player_id
+            ),
+            None,
+        )
+    else:
+        player = next(
+            (player for player in state.players if player.player_id == player_id),
+            None,
+        )
+    return player.is_eliminated if player is not None else None
+
+
+def _validate_replay_outcome(
+    state: FullGameState | PublicGameState,
+    outcome: ReplayOutcome | None,
+) -> None:
+    if state.is_finished:
+        if (
+            not isinstance(outcome, OfficialVictoryOutcome)
+            or outcome.winner_player_id != state.winner_player_id
+        ):
+            raise ValueError(
+                "Finished games require a matching official-victory replay outcome."
+            )
+        return
+    if isinstance(outcome, OfficialVictoryOutcome):
+        raise ValueError(
+            "Official-victory outcomes require a finished game state."
+        )
+    if outcome is None:
+        return
+    if isinstance(outcome, IndividualEliminationOutcome):
+        if _player_is_eliminated(state, outcome.eliminated_player_id) is not True:
+            raise ValueError(
+                "Individual-elimination outcomes require an eliminated player "
+                "in the final state."
+            )
+    elif isinstance(outcome, ResignationOutcome):
+        if _player_is_eliminated(state, outcome.player_id) is not False:
+            raise ValueError(
+                "Resignation outcomes require a non-eliminated player in the "
+                "final state."
+            )
+
+
 def create_full_replay(
     replay_id: str,
     initial_snapshot: Snapshot,
     entries: tuple[ReplayEntry, ...],
     final_state: FullGameState,
+    *,
+    outcome: ReplayOutcome | None = None,
 ) -> FullReplay:
     if initial_snapshot.game_id != final_state.game_id:
         raise ValueError("Initial snapshot and final state game IDs must match.")
+    replay_outcome = outcome
+    if final_state.is_finished and replay_outcome is None:
+        if final_state.winner_player_id is None:
+            raise ValueError("Finished games require an official winner.")
+        replay_outcome = OfficialVictoryOutcome(
+            outcome_type="official_victory",
+            winner_player_id=final_state.winner_player_id,
+        )
+    _validate_replay_outcome(final_state, replay_outcome)
     return FullReplay(
         contract_type="full_replay",
         replay_id=replay_id,
@@ -164,6 +234,7 @@ def create_full_replay(
         rules_version=final_state.rules_version,
         initial_snapshot=initial_snapshot,
         entries=entries,
+        outcome=replay_outcome,
         final_state_hash=canonical_sha256(final_state),
     )
 
@@ -197,6 +268,7 @@ def sanitize_public_replay(
         or public_final_state.rules_version != full_replay.rules_version
     ):
         raise ValueError("Public final state does not match the full replay.")
+    _validate_replay_outcome(public_final_state, full_replay.outcome)
 
     public_entries: list[ReplayEntry] = []
     for entry in full_replay.entries:
@@ -219,6 +291,7 @@ def sanitize_public_replay(
                         event_id=entry.outcome.event_id,
                         outcome=entry.outcome.outcome,
                         visibility="public",
+                        outcome_source=entry.outcome.outcome_source,
                     ),
                 )
             )
@@ -234,6 +307,7 @@ def sanitize_public_replay(
         rules_version=full_replay.rules_version,
         initial_snapshot=public_initial_snapshot,
         entries=tuple(public_entries),
+        outcome=full_replay.outcome,
         final_state_hash=canonical_sha256(public_final_state),
     )
 
@@ -297,7 +371,17 @@ def replay_full_replay(
         raise ReplayDivergenceError(
             "Full replay did not reproduce the recorded final state hash."
         )
-    return ReplayExecutionResult(state=state, random_streams=streams)
+    try:
+        _validate_replay_outcome(state, replay.outcome)
+    except ValueError as error:
+        raise ReplayDivergenceError(
+            "Full replay outcome does not match its final game state."
+        ) from error
+    return ReplayExecutionResult(
+        state=state,
+        random_streams=streams,
+        outcome=replay.outcome,
+    )
 
 
 def replay_public_replay(
@@ -333,7 +417,17 @@ def replay_public_replay(
         raise ReplayDivergenceError(
             "Public replay did not reproduce the recorded final state hash."
         )
-    return ReplayExecutionResult(state=state, random_streams=None)
+    try:
+        _validate_replay_outcome(state, replay.outcome)
+    except ValueError as error:
+        raise ReplayDivergenceError(
+            "Public replay outcome does not match its final game state."
+        ) from error
+    return ReplayExecutionResult(
+        state=state,
+        random_streams=None,
+        outcome=replay.outcome,
+    )
 
 
 __all__ = [

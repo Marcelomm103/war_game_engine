@@ -10,12 +10,18 @@ from war_game_engine.contracts import (
     ContractEnvelope,
     FullGameState,
     IncompatibleContractVersionError,
+    IndividualEliminationOutcome,
+    OfficialVictoryOutcome,
+    OperationalInterruptionOutcome,
     PlayerObservation,
     PublicGameState,
     PublicReplay,
     ReplayActionEntry,
     ReplayChanceEntry,
+    ReplayOutcome,
+    ResignationOutcome,
     Snapshot,
+    TrainingTruncationOutcome,
     parse_contract_json,
 )
 from war_game_engine.engine import apply_action, legal_actions
@@ -45,6 +51,64 @@ def _prepared_state() -> FullGameState:
         SetupPlayer(player_id="player-3", color="green"),
     )
     return prepare_game("replay-game", players, 17).state
+
+
+def _state_with_individual_elimination() -> tuple[FullGameState, str]:
+    state = _prepared_state()
+    eliminated_player_id = state.players[-1].public.player_id
+    recipient_player_id = state.players[0].public.player_id
+    territories = tuple(
+        territory.model_copy(update={"owner_player_id": recipient_player_id})
+        if territory.owner_player_id == eliminated_player_id
+        else territory
+        for territory in state.territories
+    )
+    territory_counts = {
+        player.public.player_id: 0 for player in state.players
+    }
+    army_counts = {player.public.player_id: 0 for player in state.players}
+    for territory in territories:
+        if territory.owner_player_id is None:
+            continue
+        territory_counts[territory.owner_player_id] += 1
+        army_counts[territory.owner_player_id] += territory.army_count
+    players = tuple(
+        player.model_copy(
+            update={
+                "public": player.public.model_copy(
+                    update={
+                        "territory_count": territory_counts[
+                            player.public.player_id
+                        ],
+                        "army_count": army_counts[player.public.player_id],
+                        "is_eliminated": (
+                            territory_counts[player.public.player_id] == 0
+                        ),
+                        "eliminated_by_player_id": (
+                            recipient_player_id
+                            if player.public.player_id == eliminated_player_id
+                            else None
+                        ),
+                    }
+                )
+            }
+        )
+        for player in state.players
+    )
+    state_data = state.model_dump(mode="python")
+    state_data.update(
+        {
+            "phase_id": "attack",
+            "turn_number": 2,
+            "active_player_id": recipient_player_id,
+            "turn_player_id": recipient_player_id,
+            "decision_player_id": recipient_player_id,
+            "reinforcement_pools": (),
+            "players": players,
+            "territories": territories,
+        }
+    )
+    return FullGameState.model_validate(state_data), eliminated_player_id
 
 
 def _update_random_state(state: FullGameState, streams: RandomStreams) -> FullGameState:
@@ -175,6 +239,7 @@ def test_full_replay_reexecutes_actions_and_chance_outcomes() -> None:
                 event_id="private-outcome",
                 outcome=private_die,
                 visibility="private",
+                outcome_source="simulation",
                 visible_to_player_ids=("player-1",),
             ),
         ),
@@ -187,6 +252,7 @@ def test_full_replay_reexecutes_actions_and_chance_outcomes() -> None:
                 event_id="public-outcome",
                 outcome=public_die,
                 visibility="public",
+                outcome_source="simulation",
             ),
         ),
     )
@@ -219,6 +285,7 @@ def test_full_replay_reexecutes_actions_and_chance_outcomes() -> None:
     assert result.state == final_state
     assert result.random_streams is not None
     assert result.random_streams.snapshot() == final_state.random_streams_state
+    assert result.outcome is None
 
     envelope = ContractEnvelope(
         schema_version=CONTRACT_SCHEMA_VERSION,
@@ -257,6 +324,7 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
                 event_id="private-card",
                 outcome="objective-01",
                 visibility="private",
+                outcome_source="simulation",
                 visible_to_player_ids=("player-1",),
             ),
         ),
@@ -269,6 +337,7 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
                 event_id="public-roll",
                 outcome=[4, 5],
                 visibility="public",
+                outcome_source="simulation",
                 visible_to_player_ids=("player-1",),
             ),
         ),
@@ -278,6 +347,11 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
         initial_full_snapshot,
         entries,
         initial_state,
+        outcome=TrainingTruncationOutcome(
+            outcome_type="training_truncation",
+            limit_type="time_budget_ms",
+            limit_value=30_000,
+        ),
     )
     public_state = to_public_game_state(initial_state)
     public_replay = sanitize_public_replay(
@@ -288,11 +362,13 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
     )
 
     assert isinstance(public_replay, PublicReplay)
+    assert public_replay.outcome == full_replay.outcome
     assert len(public_replay.entries) == 1
     public_entry = public_replay.entries[0]
     assert isinstance(public_entry, ReplayChanceEntry)
     assert public_entry.sequence_number == 1
     assert public_entry.outcome.event_id == "public-roll"
+    assert public_entry.outcome.outcome_source == "simulation"
     serialized = public_replay.model_dump_json()
     assert "private-card" not in serialized
     assert "objective-01" not in serialized
@@ -314,6 +390,7 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
     )
     assert result.state == public_state
     assert result.random_streams is None
+    assert result.outcome == full_replay.outcome
 
     envelope = ContractEnvelope(
         schema_version=CONTRACT_SCHEMA_VERSION,
@@ -321,6 +398,206 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
         payload=public_replay,
     )
     assert parse_contract_json(envelope.model_dump_json()).payload == public_replay
+
+
+def test_training_truncation_is_not_recorded_as_a_game_victory() -> None:
+    state = _prepared_state()
+    snapshot = create_snapshot(
+        "training-truncation-initial",
+        state,
+        visibility="full",
+    )
+    outcome = TrainingTruncationOutcome(
+        outcome_type="training_truncation",
+        limit_type="action_count",
+        limit_value=500,
+    )
+    replay = create_full_replay(
+        "training-truncation-replay",
+        snapshot,
+        (),
+        state,
+        outcome=outcome,
+    )
+
+    result = replay_full_replay(
+        replay,
+        apply_action=lambda current, _action, _streams: current,
+        apply_chance_outcome=lambda current, _outcome, _streams: current,
+    )
+
+    assert result.outcome == outcome
+    assert result.state.is_finished is False
+    assert result.state.winner_player_id is None
+    with pytest.raises(
+        ValueError,
+        match="Official-victory outcomes require a finished game state",
+    ):
+        create_full_replay(
+            "false-victory-replay",
+            snapshot,
+            (),
+            state,
+            outcome=OfficialVictoryOutcome(
+                outcome_type="official_victory",
+                winner_player_id="player-1",
+            ),
+        )
+
+
+def test_individual_elimination_replay_end_does_not_finish_the_game() -> None:
+    state, eliminated_player_id = _state_with_individual_elimination()
+    snapshot = create_snapshot(
+        "individual-elimination-initial",
+        state,
+        visibility="full",
+    )
+    outcome = IndividualEliminationOutcome(
+        outcome_type="individual_elimination",
+        eliminated_player_id=eliminated_player_id,
+    )
+
+    replay = create_full_replay(
+        "individual-elimination-replay",
+        snapshot,
+        (),
+        state,
+        outcome=outcome,
+    )
+
+    assert replay.outcome == outcome
+    assert isinstance(replay.outcome, IndividualEliminationOutcome)
+    assert state.is_finished is False
+    assert state.winner_player_id is None
+
+
+def test_finished_replay_records_the_official_winner() -> None:
+    state_data = _prepared_state().model_dump(mode="python")
+    state_data.update(
+        {
+            "phase_id": "finished",
+            "active_player_id": None,
+            "turn_player_id": None,
+            "decision_player_id": None,
+            "reinforcement_pools": (),
+            "winner_player_id": "player-1",
+            "is_finished": True,
+        }
+    )
+    final_state = FullGameState.model_validate(state_data)
+    snapshot = create_snapshot(
+        "official-victory-initial",
+        final_state,
+        visibility="full",
+    )
+
+    replay = create_full_replay(
+        "official-victory-replay",
+        snapshot,
+        (),
+        final_state,
+    )
+    result = replay_full_replay(
+        replay,
+        apply_action=lambda current, _action, _streams: current,
+        apply_chance_outcome=lambda current, _outcome, _streams: current,
+    )
+
+    assert replay.outcome == OfficialVictoryOutcome(
+        outcome_type="official_victory",
+        winner_player_id="player-1",
+    )
+    assert result.outcome == replay.outcome
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    (
+        ResignationOutcome(
+            outcome_type="resignation",
+            player_id="player-1",
+        ),
+        OperationalInterruptionOutcome(
+            outcome_type="operational_interruption",
+            cause_code="service_unavailable",
+        ),
+    ),
+)
+def test_nonvictory_replay_endings_do_not_assign_a_winner(
+    outcome: ReplayOutcome,
+) -> None:
+    state = _prepared_state()
+    snapshot = create_snapshot(
+        "nonvictory-ending-initial",
+        state,
+        visibility="full",
+    )
+
+    replay = create_full_replay(
+        "nonvictory-ending-replay",
+        snapshot,
+        (),
+        state,
+        outcome=outcome,
+    )
+
+    assert replay.outcome == outcome
+    assert state.is_finished is False
+    assert state.winner_player_id is None
+
+
+@pytest.mark.parametrize(
+    ("request_ids", "event_ids", "duplicate_label"),
+    (
+        (
+            ("request-1", "request-2"),
+            ("event-1", "event-1"),
+            "Chance event IDs",
+        ),
+        (
+            ("request-1", "request-1"),
+            ("event-1", "event-2"),
+            "Chance request IDs",
+        ),
+    ),
+)
+def test_replay_rejects_reused_chance_outcome_ids(
+    request_ids: tuple[str, str],
+    event_ids: tuple[str, str],
+    duplicate_label: str,
+) -> None:
+    initial_state = _prepared_state()
+    initial_snapshot = create_snapshot(
+        "duplicate-chance-initial",
+        initial_state,
+        visibility="full",
+    )
+    entries = tuple(
+        ReplayChanceEntry(
+            entry_type="chance_outcome",
+            sequence_number=index,
+            outcome=ChanceOutcome(
+                contract_type="chance_outcome",
+                request_id=request_id,
+                event_id=event_id,
+                outcome=[index],
+                visibility="public",
+                outcome_source="site",
+            ),
+        )
+        for index, (request_id, event_id) in enumerate(
+            zip(request_ids, event_ids, strict=True),
+            start=1,
+        )
+    )
+
+    with pytest.raises(ValidationError, match=duplicate_label):
+        create_full_replay(
+            "duplicate-chance-replay",
+            initial_snapshot,
+            entries,
+            initial_state,
+        )
 
 
 def test_replay_rejects_incompatible_versions_and_divergence() -> None:

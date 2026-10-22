@@ -64,7 +64,7 @@
           "type": "string"
         },
         "action_schema_version": {
-          "const": "1.0.0",
+          "const": "1.4.0",
           "title": "Action Schema Version",
           "type": "string"
         },
@@ -87,6 +87,9 @@
             "mapping": {
               "attack": "#/$defs/AttackOperation",
               "claim_territory": "#/$defs/ClaimTerritoryOperation",
+              "discard_territory_card": "#/$defs/DiscardTerritoryCardOperation",
+              "draw_territory_card": "#/$defs/DrawTerritoryCardOperation",
+              "end_phase": "#/$defs/EndPhaseOperation",
               "end_turn": "#/$defs/EndTurnOperation",
               "move_armies": "#/$defs/MoveArmiesOperation",
               "occupy_territory": "#/$defs/OccupyTerritoryOperation",
@@ -106,6 +109,12 @@
               "$ref": "#/$defs/TradeCardsOperation"
             },
             {
+              "$ref": "#/$defs/DrawTerritoryCardOperation"
+            },
+            {
+              "$ref": "#/$defs/DiscardTerritoryCardOperation"
+            },
+            {
               "$ref": "#/$defs/AttackOperation"
             },
             {
@@ -113,6 +122,9 @@
             },
             {
               "$ref": "#/$defs/MoveArmiesOperation"
+            },
+            {
+              "$ref": "#/$defs/EndPhaseOperation"
             },
             {
               "$ref": "#/$defs/EndTurnOperation"
@@ -285,11 +297,51 @@
       "title": "AgentProtocol",
       "type": "object"
     },
+    "AppliedChanceOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "event_id": {
+          "minLength": 1,
+          "title": "Event Id",
+          "type": "string"
+        },
+        "outcome_source": {
+          "enum": [
+            "simulation",
+            "site",
+            "physical_board"
+          ],
+          "title": "Outcome Source",
+          "type": "string"
+        },
+        "request_id": {
+          "minLength": 1,
+          "title": "Request Id",
+          "type": "string"
+        },
+        "visibility": {
+          "enum": [
+            "public",
+            "private"
+          ],
+          "title": "Visibility",
+          "type": "string"
+        }
+      },
+      "required": [
+        "request_id",
+        "event_id",
+        "visibility",
+        "outcome_source"
+      ],
+      "title": "AppliedChanceOutcome",
+      "type": "object"
+    },
     "ArmyPlacement": {
       "additionalProperties": false,
       "properties": {
         "army_count": {
-          "exclusiveMinimum": 0,
+          "const": 1,
           "title": "Army Count",
           "type": "integer"
         },
@@ -609,6 +661,15 @@
         "outcome": {
           "$ref": "#/$defs/JsonValue"
         },
+        "outcome_source": {
+          "enum": [
+            "simulation",
+            "site",
+            "physical_board"
+          ],
+          "title": "Outcome Source",
+          "type": "string"
+        },
         "request_id": {
           "title": "Request Id",
           "type": "string"
@@ -635,7 +696,8 @@
         "request_id",
         "event_id",
         "outcome",
-        "visibility"
+        "visibility",
+        "outcome_source"
       ],
       "title": "ChanceOutcome",
       "type": "object"
@@ -907,6 +969,14 @@
           "title": "Draw Pile Card Ids",
           "type": "array"
         },
+        "hand_limit_discard_card_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Hand Limit Discard Card Ids",
+          "type": "array"
+        },
         "trade_count": {
           "minimum": 0,
           "title": "Trade Count",
@@ -919,6 +989,67 @@
         "trade_count"
       ],
       "title": "DeckState",
+      "type": "object"
+    },
+    "DiscardTerritoryCardOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "discard_territory_card",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "card_id": {
+          "minLength": 1,
+          "title": "Card Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "card_id"
+      ],
+      "title": "DiscardTerritoryCardOperation",
+      "type": "object"
+    },
+    "DrawTerritoryCardOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "draw_territory_card",
+          "title": "Action Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type"
+      ],
+      "title": "DrawTerritoryCardOperation",
+      "type": "object"
+    },
+    "EndPhaseOperation": {
+      "additionalProperties": false,
+      "properties": {
+        "action_type": {
+          "const": "end_phase",
+          "title": "Action Type",
+          "type": "string"
+        },
+        "phase_id": {
+          "enum": [
+            "reinforcement",
+            "attack",
+            "movement"
+          ],
+          "title": "Phase Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "action_type",
+        "phase_id"
+      ],
+      "title": "EndPhaseOperation",
       "type": "object"
     },
     "EndTurnOperation": {
@@ -1027,6 +1158,14 @@
           ],
           "title": "Active Player Id"
         },
+        "applied_chance_outcomes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AppliedChanceOutcome"
+          },
+          "title": "Applied Chance Outcomes",
+          "type": "array"
+        },
         "contract_type": {
           "const": "full_game_state",
           "title": "Contract Type",
@@ -1054,6 +1193,11 @@
           "title": "Game Id",
           "type": "string"
         },
+        "has_conquered_territory_this_turn": {
+          "default": false,
+          "title": "Has Conquered Territory This Turn",
+          "type": "boolean"
+        },
         "initial_placement_order": {
           "default": [],
           "items": {
@@ -1069,7 +1213,54 @@
         "movement_control": {
           "$ref": "#/$defs/MovementControl"
         },
+        "pending_combat": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingCombat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pending_objective_check": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingObjectiveCheck"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pending_occupation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingOccupation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "phase_id": {
+          "enum": [
+            "territory_claim",
+            "initial_placement",
+            "reinforcement",
+            "reinforcement_placement",
+            "attack",
+            "occupation",
+            "objective_check",
+            "movement",
+            "card_purchase",
+            "card_discard",
+            "turn_end",
+            "finished"
+          ],
           "title": "Phase Id",
           "type": "string"
         },
@@ -1136,6 +1327,18 @@
           ],
           "default": null,
           "title": "Turn Player Id"
+        },
+        "winner_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Winner Player Id"
         }
       },
       "required": [
@@ -1225,6 +1428,44 @@
         },
         "initial_snapshot": {
           "$ref": "#/$defs/Snapshot"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "individual_elimination": "#/$defs/IndividualEliminationOutcome",
+                  "official_victory": "#/$defs/OfficialVictoryOutcome",
+                  "operational_interruption": "#/$defs/OperationalInterruptionOutcome",
+                  "resignation": "#/$defs/ResignationOutcome",
+                  "training_truncation": "#/$defs/TrainingTruncationOutcome"
+                },
+                "propertyName": "outcome_type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/OfficialVictoryOutcome"
+                },
+                {
+                  "$ref": "#/$defs/IndividualEliminationOutcome"
+                },
+                {
+                  "$ref": "#/$defs/ResignationOutcome"
+                },
+                {
+                  "$ref": "#/$defs/OperationalInterruptionOutcome"
+                },
+                {
+                  "$ref": "#/$defs/TrainingTruncationOutcome"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outcome"
         },
         "replay_id": {
           "minLength": 1,
@@ -1407,6 +1648,27 @@
         "height"
       ],
       "title": "ImageRegion",
+      "type": "object"
+    },
+    "IndividualEliminationOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "eliminated_player_id": {
+          "minLength": 1,
+          "title": "Eliminated Player Id",
+          "type": "string"
+        },
+        "outcome_type": {
+          "const": "individual_elimination",
+          "title": "Outcome Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_type",
+        "eliminated_player_id"
+      ],
+      "title": "IndividualEliminationOutcome",
       "type": "object"
     },
     "InferenceConfig": {
@@ -1909,6 +2171,214 @@
       "title": "OccupyTerritoryOperation",
       "type": "object"
     },
+    "OfficialVictoryOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "outcome_type": {
+          "const": "official_victory",
+          "title": "Outcome Type",
+          "type": "string"
+        },
+        "winner_player_id": {
+          "minLength": 1,
+          "title": "Winner Player Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_type",
+        "winner_player_id"
+      ],
+      "title": "OfficialVictoryOutcome",
+      "type": "object"
+    },
+    "OperationalInterruptionOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "cause_code": {
+          "minLength": 1,
+          "title": "Cause Code",
+          "type": "string"
+        },
+        "outcome_type": {
+          "const": "operational_interruption",
+          "title": "Outcome Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_type",
+        "cause_code"
+      ],
+      "title": "OperationalInterruptionOutcome",
+      "type": "object"
+    },
+    "PendingCombat": {
+      "additionalProperties": false,
+      "properties": {
+        "action_id": {
+          "minLength": 1,
+          "title": "Action Id",
+          "type": "string"
+        },
+        "attacker_dice_count": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Attacker Dice Count",
+          "type": "integer"
+        },
+        "attacker_player_id": {
+          "minLength": 1,
+          "title": "Attacker Player Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "pending_combat",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "defender_dice_count": {
+          "maximum": 3,
+          "minimum": 1,
+          "title": "Defender Dice Count",
+          "type": "integer"
+        },
+        "origin_territory_id": {
+          "minLength": 1,
+          "title": "Origin Territory Id",
+          "type": "string"
+        },
+        "request_id": {
+          "minLength": 1,
+          "title": "Request Id",
+          "type": "string"
+        },
+        "target_territory_id": {
+          "minLength": 1,
+          "title": "Target Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "request_id",
+        "action_id",
+        "attacker_player_id",
+        "origin_territory_id",
+        "target_territory_id",
+        "attacker_dice_count",
+        "defender_dice_count"
+      ],
+      "title": "PendingCombat",
+      "type": "object"
+    },
+    "PendingObjectiveCheck": {
+      "additionalProperties": false,
+      "properties": {
+        "actor_player_id": {
+          "minLength": 1,
+          "title": "Actor Player Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "pending_objective_check",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "eliminated_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eliminated Player Id"
+        },
+        "resume_decision_player_id": {
+          "minLength": 1,
+          "title": "Resume Decision Player Id",
+          "type": "string"
+        },
+        "resume_phase_id": {
+          "enum": [
+            "territory_claim",
+            "initial_placement",
+            "reinforcement",
+            "reinforcement_placement",
+            "attack",
+            "occupation",
+            "movement",
+            "card_purchase",
+            "card_discard",
+            "turn_end"
+          ],
+          "title": "Resume Phase Id",
+          "type": "string"
+        },
+        "territory_id": {
+          "minLength": 1,
+          "title": "Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "actor_player_id",
+        "territory_id",
+        "resume_phase_id",
+        "resume_decision_player_id"
+      ],
+      "title": "PendingObjectiveCheck",
+      "type": "object"
+    },
+    "PendingOccupation": {
+      "additionalProperties": false,
+      "properties": {
+        "attacker_player_id": {
+          "minLength": 1,
+          "title": "Attacker Player Id",
+          "type": "string"
+        },
+        "contract_type": {
+          "const": "pending_occupation",
+          "title": "Contract Type",
+          "type": "string"
+        },
+        "defender_player_id": {
+          "minLength": 1,
+          "title": "Defender Player Id",
+          "type": "string"
+        },
+        "maximum_army_count": {
+          "exclusiveMinimum": 0,
+          "title": "Maximum Army Count",
+          "type": "integer"
+        },
+        "origin_territory_id": {
+          "minLength": 1,
+          "title": "Origin Territory Id",
+          "type": "string"
+        },
+        "target_territory_id": {
+          "minLength": 1,
+          "title": "Target Territory Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "contract_type",
+        "attacker_player_id",
+        "defender_player_id",
+        "origin_territory_id",
+        "target_territory_id",
+        "maximum_army_count"
+      ],
+      "title": "PendingOccupation",
+      "type": "object"
+    },
     "PlaceArmiesOperation": {
       "additionalProperties": false,
       "properties": {
@@ -1929,6 +2399,7 @@
           "items": {
             "$ref": "#/$defs/ArmyPlacement"
           },
+          "maxItems": 1,
           "minItems": 1,
           "title": "Placements",
           "type": "array"
@@ -2001,7 +2472,7 @@
           "type": "array"
         },
         "observation_schema_version": {
-          "const": "1.0.0",
+          "const": "1.9.0",
           "title": "Observation Schema Version",
           "type": "string"
         },
@@ -2230,6 +2701,14 @@
           ],
           "title": "Active Player Id"
         },
+        "applied_chance_outcomes": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/AppliedChanceOutcome"
+          },
+          "title": "Applied Chance Outcomes",
+          "type": "array"
+        },
         "contract_type": {
           "const": "public_game_state",
           "title": "Contract Type",
@@ -2251,6 +2730,11 @@
           "title": "Game Id",
           "type": "string"
         },
+        "has_conquered_territory_this_turn": {
+          "default": false,
+          "title": "Has Conquered Territory This Turn",
+          "type": "boolean"
+        },
         "initial_placement_order": {
           "default": [],
           "items": {
@@ -2266,7 +2750,54 @@
         "movement_control": {
           "$ref": "#/$defs/MovementControl"
         },
+        "pending_combat": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingCombat"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pending_objective_check": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingObjectiveCheck"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pending_occupation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/PendingOccupation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
         "phase_id": {
+          "enum": [
+            "territory_claim",
+            "initial_placement",
+            "reinforcement",
+            "reinforcement_placement",
+            "attack",
+            "occupation",
+            "objective_check",
+            "movement",
+            "card_purchase",
+            "card_discard",
+            "turn_end",
+            "finished"
+          ],
           "title": "Phase Id",
           "type": "string"
         },
@@ -2322,6 +2853,42 @@
           ],
           "default": null,
           "title": "Turn Player Id"
+        },
+        "winner_objective_fallback_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Winner Objective Fallback Id"
+        },
+        "winner_objective_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Winner Objective Id"
+        },
+        "winner_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Winner Player Id"
         }
       },
       "required": [
@@ -2351,6 +2918,18 @@
         "color": {
           "title": "Color",
           "type": "string"
+        },
+        "eliminated_by_player_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Eliminated By Player Id"
         },
         "is_eliminated": {
           "title": "Is Eliminated",
@@ -2428,6 +3007,44 @@
         },
         "initial_snapshot": {
           "$ref": "#/$defs/Snapshot"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "discriminator": {
+                "mapping": {
+                  "individual_elimination": "#/$defs/IndividualEliminationOutcome",
+                  "official_victory": "#/$defs/OfficialVictoryOutcome",
+                  "operational_interruption": "#/$defs/OperationalInterruptionOutcome",
+                  "resignation": "#/$defs/ResignationOutcome",
+                  "training_truncation": "#/$defs/TrainingTruncationOutcome"
+                },
+                "propertyName": "outcome_type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/OfficialVictoryOutcome"
+                },
+                {
+                  "$ref": "#/$defs/IndividualEliminationOutcome"
+                },
+                {
+                  "$ref": "#/$defs/ResignationOutcome"
+                },
+                {
+                  "$ref": "#/$defs/OperationalInterruptionOutcome"
+                },
+                {
+                  "$ref": "#/$defs/TrainingTruncationOutcome"
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Outcome"
         },
         "replay_id": {
           "minLength": 1,
@@ -2702,6 +3319,27 @@
       "title": "ReplayManifest",
       "type": "object"
     },
+    "ResignationOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "outcome_type": {
+          "const": "resignation",
+          "title": "Outcome Type",
+          "type": "string"
+        },
+        "player_id": {
+          "minLength": 1,
+          "title": "Player Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_type",
+        "player_id"
+      ],
+      "title": "ResignationOutcome",
+      "type": "object"
+    },
     "RulesetSpec": {
       "additionalProperties": false,
       "properties": {
@@ -2909,7 +3547,7 @@
           "type": "string"
         },
         "replay_version": {
-          "default": "1.0.0",
+          "default": "1.10.0",
           "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$",
           "title": "Replay Version",
           "type": "string"
@@ -3179,6 +3817,37 @@
         "card_ids"
       ],
       "title": "TradeCardsOperation",
+      "type": "object"
+    },
+    "TrainingTruncationOutcome": {
+      "additionalProperties": false,
+      "properties": {
+        "limit_type": {
+          "enum": [
+            "turn_count",
+            "action_count",
+            "time_budget_ms"
+          ],
+          "title": "Limit Type",
+          "type": "string"
+        },
+        "limit_value": {
+          "exclusiveMinimum": 0,
+          "title": "Limit Value",
+          "type": "integer"
+        },
+        "outcome_type": {
+          "const": "training_truncation",
+          "title": "Outcome Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "outcome_type",
+        "limit_type",
+        "limit_value"
+      ],
+      "title": "TrainingTruncationOutcome",
       "type": "object"
     }
   },

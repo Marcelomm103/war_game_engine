@@ -29,6 +29,33 @@ PositiveInt = Annotated[int, Field(gt=0)]
 Confidence = Annotated[float, Field(ge=0.0, le=1.0)]
 Sha256Hash = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
 TerritoryCardSymbol = Literal["triangle", "circle", "square"]
+GamePhaseId = Literal[
+    "territory_claim",
+    "initial_placement",
+    "reinforcement",
+    "reinforcement_placement",
+    "attack",
+    "occupation",
+    "objective_check",
+    "movement",
+    "card_purchase",
+    "card_discard",
+    "turn_end",
+    "finished",
+]
+EndablePhaseId = Literal["reinforcement", "attack", "movement"]
+ObjectiveResumePhaseId = Literal[
+    "territory_claim",
+    "initial_placement",
+    "reinforcement",
+    "reinforcement_placement",
+    "attack",
+    "occupation",
+    "movement",
+    "card_purchase",
+    "card_discard",
+    "turn_end",
+]
 
 
 class ContractModel(BaseModel):
@@ -462,6 +489,54 @@ class MovementControl(ContractModel):
         return self
 
 
+class PendingCombat(ContractModel):
+    contract_type: Literal["pending_combat"]
+    request_id: str = Field(min_length=1)
+    action_id: str = Field(min_length=1)
+    attacker_player_id: str = Field(min_length=1)
+    origin_territory_id: str = Field(min_length=1)
+    target_territory_id: str = Field(min_length=1)
+    attacker_dice_count: Annotated[int, Field(ge=1, le=3)]
+    defender_dice_count: Annotated[int, Field(ge=1, le=3)]
+
+    @model_validator(mode="after")
+    def validate_combat_route(self) -> PendingCombat:
+        if self.origin_territory_id == self.target_territory_id:
+            raise ValueError("Combat cannot target its origin territory.")
+        return self
+
+
+class PendingOccupation(ContractModel):
+    contract_type: Literal["pending_occupation"]
+    attacker_player_id: str = Field(min_length=1)
+    defender_player_id: str = Field(min_length=1)
+    origin_territory_id: str = Field(min_length=1)
+    target_territory_id: str = Field(min_length=1)
+    maximum_army_count: PositiveInt
+
+    @model_validator(mode="after")
+    def validate_occupation_route(self) -> PendingOccupation:
+        if self.origin_territory_id == self.target_territory_id:
+            raise ValueError("Occupation cannot target its origin territory.")
+        return self
+
+
+class PendingObjectiveCheck(ContractModel):
+    contract_type: Literal["pending_objective_check"]
+    actor_player_id: str = Field(min_length=1)
+    territory_id: str = Field(min_length=1)
+    resume_phase_id: ObjectiveResumePhaseId
+    resume_decision_player_id: str = Field(min_length=1)
+    eliminated_player_id: str | None = None
+
+
+class AppliedChanceOutcome(ContractModel):
+    request_id: str = Field(min_length=1)
+    event_id: str = Field(min_length=1)
+    visibility: Literal["public", "private"]
+    outcome_source: Literal["simulation", "site", "physical_board"]
+
+
 class RandomStreamState(ContractModel):
     stream_id: str = Field(min_length=1)
     bit_generator_state: dict[str, JsonValue]
@@ -507,6 +582,7 @@ class PublicPlayerState(ContractModel):
     territory_count: NonNegativeInt
     army_count: NonNegativeInt
     is_eliminated: bool
+    eliminated_by_player_id: str | None = None
 
 
 class PlayerPrivateState(ContractModel):
@@ -537,13 +613,18 @@ class FullPlayerState(ContractModel):
 class DeckState(ContractModel):
     draw_pile_card_ids: tuple[str, ...]
     discard_pile_card_ids: tuple[str, ...]
+    hand_limit_discard_card_ids: tuple[str, ...] = ()
     trade_count: NonNegativeInt
 
     @model_validator(mode="after")
     def validate_card_zones(self) -> DeckState:
         _ensure_unique(
-            (*self.draw_pile_card_ids, *self.discard_pile_card_ids),
-            "Draw and discard card IDs",
+            (
+                *self.draw_pile_card_ids,
+                *self.discard_pile_card_ids,
+                *self.hand_limit_discard_card_ids,
+            ),
+            "Card IDs across deck zones",
         )
         return self
 
@@ -610,6 +691,14 @@ def _validate_game_state_invariants(
                 f"Elimination status for player {player.player_id!r} does not match "
                 "territory ownership."
             )
+        eliminator_id = player.eliminated_by_player_id
+        if eliminator_id is not None:
+            if not player.is_eliminated:
+                raise ValueError("Only eliminated players can have an eliminator.")
+            if eliminator_id == player.player_id:
+                raise ValueError("A player cannot eliminate themselves.")
+            if eliminator_id not in known_players:
+                raise ValueError("Eliminator must reference a known player.")
 
     effective_turn_player_id = turn_player_id or active_player_id
     if (
@@ -660,14 +749,197 @@ def _validate_game_state_invariants(
                     f"territories: {', '.join(unknown_territories)}."
                 )
 
+    moved_in_counts = dict.fromkeys(known_territories, 0)
     for transfer in movement_control.moved_transfers:
         if (
             transfer.origin_territory_id not in known_territories
             or transfer.target_territory_id not in known_territories
         ):
             raise ValueError("Movement control references an unknown territory.")
+        moved_in_counts[transfer.target_territory_id] += transfer.army_count
+    for territory in territories:
+        if moved_in_counts[territory.territory_id] > territory.army_count:
+            raise ValueError(
+                f"Movement ledger exceeds armies in territory "
+                f"{territory.territory_id!r}."
+            )
     if not is_finished and not players and active_player_id is not None:
         raise ValueError("An active game must contain players.")
+
+
+def _validate_game_phase(
+    *,
+    phase_id: GamePhaseId,
+    turn_number: int,
+    is_finished: bool,
+    active_player_id: str | None,
+    turn_player_id: str | None,
+    decision_player_id: str | None,
+    has_conquered_territory_this_turn: bool,
+) -> None:
+    if is_finished != (phase_id == "finished"):
+        raise ValueError("The finished phase and is_finished flag must agree.")
+    if is_finished and any(
+        player_id is not None
+        for player_id in (
+            active_player_id,
+            turn_player_id,
+            decision_player_id,
+        )
+    ):
+        raise ValueError("Finished games cannot have an active player decision.")
+    if phase_id in {
+        "reinforcement",
+        "reinforcement_placement",
+        "attack",
+        "occupation",
+        "movement",
+        "card_purchase",
+        "card_discard",
+        "turn_end",
+    } and turn_number < 2:
+        raise ValueError("Regular-turn phases cannot occur before round two.")
+    if phase_id in {"card_purchase", "card_discard"} and (
+        not has_conquered_territory_this_turn
+    ):
+        raise ValueError(
+            "Card purchase and discard phases require a territory conquest this turn."
+        )
+
+
+def _validate_pending_decisions(
+    *,
+    players: tuple[PublicPlayerState, ...],
+    phase_id: GamePhaseId,
+    decision_player_id: str | None,
+    territories: tuple[TerritoryState, ...],
+    pending_combat: PendingCombat | None,
+    pending_occupation: PendingOccupation | None,
+    pending_objective_check: PendingObjectiveCheck | None,
+) -> None:
+    pending_decisions = sum(
+        item is not None
+        for item in (pending_combat, pending_occupation, pending_objective_check)
+    )
+    objective_check_before_occupation = (
+        pending_occupation is not None
+        and pending_objective_check is not None
+        and pending_objective_check.resume_phase_id == "occupation"
+    )
+    if pending_decisions > 1 and not objective_check_before_occupation:
+        raise ValueError("Only one game decision can be pending at a time.")
+    territory_by_id = {territory.territory_id: territory for territory in territories}
+    if pending_combat is not None:
+        if phase_id != "attack":
+            raise ValueError("Pending combat is only valid during the attack phase.")
+        if decision_player_id != pending_combat.attacker_player_id:
+            raise ValueError("Pending combat must belong to the decision player.")
+        origin = territory_by_id.get(pending_combat.origin_territory_id)
+        target = territory_by_id.get(pending_combat.target_territory_id)
+        if origin is None or target is None:
+            raise ValueError("Pending combat references an unknown territory.")
+        if origin.owner_player_id != pending_combat.attacker_player_id:
+            raise ValueError("Pending combat origin must belong to the attacker.")
+        if (
+            target.owner_player_id is None
+            or target.owner_player_id == pending_combat.attacker_player_id
+        ):
+            raise ValueError("Pending combat target must belong to an opponent.")
+        if pending_combat.attacker_dice_count > min(3, origin.army_count - 1):
+            raise ValueError("Pending combat exceeds the attacking armies.")
+        if pending_combat.defender_dice_count != min(target.army_count, 3):
+            raise ValueError("Pending combat has an invalid defender dice count.")
+    if pending_occupation is not None:
+        objective_check_before_occupation = (
+            phase_id == "objective_check"
+            and pending_objective_check is not None
+            and pending_objective_check.resume_phase_id == "occupation"
+        )
+        if phase_id != "occupation" and not objective_check_before_occupation:
+            raise ValueError(
+                "Pending occupation is only valid during the occupation phase."
+            )
+        if decision_player_id != pending_occupation.attacker_player_id:
+            raise ValueError("Pending occupation must belong to the decision player.")
+        known_player_ids = {player.player_id for player in players}
+        if (
+            pending_occupation.defender_player_id == pending_occupation.attacker_player_id
+            or pending_occupation.defender_player_id not in known_player_ids
+        ):
+            raise ValueError("Pending occupation must reference a different defender.")
+        defender = next(
+            player
+            for player in players
+            if player.player_id == pending_occupation.defender_player_id
+        )
+        if (
+            defender.is_eliminated
+            and defender.eliminated_by_player_id
+            != pending_occupation.attacker_player_id
+        ):
+            raise ValueError(
+                "Eliminated defender must be attributed to the pending attacker."
+            )
+        origin = territory_by_id.get(pending_occupation.origin_territory_id)
+        target = territory_by_id.get(pending_occupation.target_territory_id)
+        if origin is None or target is None:
+            raise ValueError("Pending occupation references an unknown territory.")
+        if origin.owner_player_id != pending_occupation.attacker_player_id:
+            raise ValueError("Pending occupation origin must belong to the attacker.")
+        if target.owner_player_id is not None or target.army_count != 0:
+            raise ValueError("Pending occupation target must be unowned and empty.")
+        if pending_occupation.maximum_army_count > origin.army_count - 1:
+            raise ValueError("Pending occupation exceeds the available armies.")
+    elif phase_id == "occupation":
+        raise ValueError("Occupation phase requires a pending occupation.")
+    if pending_objective_check is not None:
+        if phase_id != "objective_check":
+            raise ValueError(
+                "A pending objective check is only valid in its dedicated phase."
+            )
+        if decision_player_id != pending_objective_check.resume_decision_player_id:
+            raise ValueError(
+                "Pending objective check has an inconsistent resumption player."
+            )
+        known_player_ids = {player.player_id for player in players}
+        if pending_objective_check.actor_player_id not in known_player_ids:
+            raise ValueError("Pending objective check references an unknown actor.")
+        target = territory_by_id.get(pending_objective_check.territory_id)
+        if target is None:
+            raise ValueError("Pending objective check references an unknown territory.")
+        if pending_objective_check.resume_phase_id == "occupation":
+            if (
+                pending_occupation is None
+                or pending_occupation.target_territory_id
+                != pending_objective_check.territory_id
+            ):
+                raise ValueError(
+                    "Objective check before occupation requires its pending conquest."
+                )
+        elif pending_occupation is not None:
+            raise ValueError(
+                "Pending occupation must resume only after objective checking."
+            )
+        if pending_objective_check.eliminated_player_id is not None:
+            eliminated_player = next(
+                (
+                    player
+                    for player in players
+                    if player.player_id == pending_objective_check.eliminated_player_id
+                ),
+                None,
+            )
+            if (
+                eliminated_player is None
+                or not eliminated_player.is_eliminated
+                or eliminated_player.eliminated_by_player_id
+                != pending_objective_check.actor_player_id
+            ):
+                raise ValueError(
+                    "Pending objective check has an inconsistent elimination."
+                )
+    elif phase_id == "objective_check":
+        raise ValueError("Objective-check phase requires a pending objective check.")
 
 
 class FullGameState(ContractModel):
@@ -676,8 +948,9 @@ class FullGameState(ContractModel):
     ruleset_id: str
     rules_version: SemanticVersion
     state_version: NonNegativeInt
-    phase_id: str
+    phase_id: GamePhaseId
     turn_number: NonNegativeInt
+    has_conquered_territory_this_turn: bool = False
     active_player_id: str | None
     turn_player_id: str | None = None
     decision_player_id: str | None = None
@@ -686,6 +959,11 @@ class FullGameState(ContractModel):
     territories: tuple[TerritoryState, ...]
     reinforcement_pools: tuple[ReinforcementPool, ...] = ()
     movement_control: MovementControl = Field(default_factory=MovementControl)
+    pending_combat: PendingCombat | None = None
+    pending_occupation: PendingOccupation | None = None
+    pending_objective_check: PendingObjectiveCheck | None = None
+    applied_chance_outcomes: tuple[AppliedChanceOutcome, ...] = ()
+    winner_player_id: str | None = None
     deck: DeckState
     engine_random_state: JsonValue
     random_streams_state: RandomStreamsState | None = None
@@ -712,15 +990,73 @@ class FullGameState(ContractModel):
             movement_control=self.movement_control,
             is_finished=self.is_finished,
         )
+        _validate_game_phase(
+            phase_id=self.phase_id,
+            turn_number=self.turn_number,
+            is_finished=self.is_finished,
+            active_player_id=self.active_player_id,
+            turn_player_id=self.turn_player_id,
+            decision_player_id=self.decision_player_id,
+            has_conquered_territory_this_turn=(
+                self.has_conquered_territory_this_turn
+            ),
+        )
+        _validate_pending_decisions(
+            players=public_players,
+            phase_id=self.phase_id,
+            decision_player_id=self.decision_player_id or self.active_player_id,
+            territories=self.territories,
+            pending_combat=self.pending_combat,
+            pending_occupation=self.pending_occupation,
+            pending_objective_check=self.pending_objective_check,
+        )
+        if self.winner_player_id is not None:
+            winner = next(
+                (
+                    player
+                    for player in self.players
+                    if player.public.player_id == self.winner_player_id
+                ),
+                None,
+            )
+            if (
+                not self.is_finished
+                or winner is None
+                or winner.public.is_eliminated
+            ):
+                raise ValueError("Winner must be an active player in a finished game.")
+            if winner.private.objective_id is None:
+                raise ValueError("A winner must have an assigned objective to reveal.")
+        elif self.is_finished:
+            raise ValueError("Finished games require an official winner.")
         objectives = tuple(
             player.private.objective_id
             for player in self.players
             if player.private.objective_id is not None
         )
         _ensure_unique(objectives, "Assigned objective IDs")
+        decision_player_id = self.decision_player_id or self.active_player_id
+        if self.phase_id == "card_discard" and decision_player_id is None:
+            raise ValueError("Card-discard phase requires a decision player.")
+        for player in self.players:
+            hand_size = len(player.private.hand_card_ids)
+            if (
+                self.phase_id == "card_discard"
+                and player.public.player_id == decision_player_id
+            ):
+                if hand_size != 6:
+                    raise ValueError(
+                        "Card-discard phase requires exactly six cards in the "
+                        "decision player's hand."
+                    )
+            elif hand_size > 5:
+                raise ValueError(
+                    "Player hands cannot exceed five cards outside card-discard."
+                )
         cards = [
             *self.deck.draw_pile_card_ids,
             *self.deck.discard_pile_card_ids,
+            *self.deck.hand_limit_discard_card_ids,
             *(
                 card_id
                 for player in self.players
@@ -728,6 +1064,14 @@ class FullGameState(ContractModel):
             ),
         ]
         _ensure_unique(cards, "Card IDs across game zones and player hands")
+        _ensure_unique(
+            (outcome.request_id for outcome in self.applied_chance_outcomes),
+            "Applied chance request IDs",
+        )
+        _ensure_unique(
+            (outcome.event_id for outcome in self.applied_chance_outcomes),
+            "Applied chance event IDs",
+        )
         return self
 
 
@@ -737,8 +1081,9 @@ class PublicGameState(ContractModel):
     ruleset_id: str
     rules_version: SemanticVersion
     state_version: NonNegativeInt
-    phase_id: str
+    phase_id: GamePhaseId
     turn_number: NonNegativeInt
+    has_conquered_territory_this_turn: bool = False
     active_player_id: str | None
     turn_player_id: str | None = None
     decision_player_id: str | None = None
@@ -747,6 +1092,13 @@ class PublicGameState(ContractModel):
     territories: tuple[TerritoryState, ...]
     reinforcement_pools: tuple[ReinforcementPool, ...] = ()
     movement_control: MovementControl = Field(default_factory=MovementControl)
+    pending_combat: PendingCombat | None = None
+    pending_occupation: PendingOccupation | None = None
+    pending_objective_check: PendingObjectiveCheck | None = None
+    applied_chance_outcomes: tuple[AppliedChanceOutcome, ...] = ()
+    winner_player_id: str | None = None
+    winner_objective_id: str | None = None
+    winner_objective_fallback_id: str | None = None
     is_finished: bool
 
     @model_validator(mode="after")
@@ -762,12 +1114,65 @@ class PublicGameState(ContractModel):
             movement_control=self.movement_control,
             is_finished=self.is_finished,
         )
+        _validate_game_phase(
+            phase_id=self.phase_id,
+            turn_number=self.turn_number,
+            is_finished=self.is_finished,
+            active_player_id=self.active_player_id,
+            turn_player_id=self.turn_player_id,
+            decision_player_id=self.decision_player_id,
+            has_conquered_territory_this_turn=(
+                self.has_conquered_territory_this_turn
+            ),
+        )
+        _validate_pending_decisions(
+            players=self.players,
+            phase_id=self.phase_id,
+            decision_player_id=self.decision_player_id or self.active_player_id,
+            territories=self.territories,
+            pending_combat=self.pending_combat,
+            pending_occupation=self.pending_occupation,
+            pending_objective_check=self.pending_objective_check,
+        )
+        if any(
+            outcome.visibility != "public"
+            for outcome in self.applied_chance_outcomes
+        ):
+            raise ValueError("Public state cannot contain private chance outcome IDs.")
+        _ensure_unique(
+            (outcome.request_id for outcome in self.applied_chance_outcomes),
+            "Applied public chance request IDs",
+        )
+        _ensure_unique(
+            (outcome.event_id for outcome in self.applied_chance_outcomes),
+            "Applied public chance event IDs",
+        )
+        if self.winner_player_id is not None:
+            winner = next(
+                (
+                    player
+                    for player in self.players
+                    if player.player_id == self.winner_player_id
+                ),
+                None,
+            )
+            if not self.is_finished or winner is None or winner.is_eliminated:
+                raise ValueError("Winner must be an active player in a finished game.")
+            if self.winner_objective_id is None:
+                raise ValueError("Finished public states must reveal the winner's objective.")
+        elif (
+            self.winner_objective_id is not None
+            or self.winner_objective_fallback_id is not None
+        ):
+            raise ValueError("Winner objectives are visible only after a victory.")
+        elif self.is_finished:
+            raise ValueError("Finished public states require an official winner.")
         return self
 
 
 class ArmyPlacement(ContractModel):
     territory_id: str
-    army_count: PositiveInt
+    army_count: Literal[1]
     source_pool_id: str | None = None
 
 
@@ -778,13 +1183,22 @@ class ClaimTerritoryOperation(ContractModel):
 
 class PlaceArmiesOperation(ContractModel):
     action_type: Literal["place_armies"]
-    placements: tuple[ArmyPlacement, ...] = Field(min_length=1)
+    placements: tuple[ArmyPlacement, ...] = Field(min_length=1, max_length=1)
     placement_phase: Literal["initial", "reinforcement"]
 
 
 class TradeCardsOperation(ContractModel):
     action_type: Literal["trade_cards"]
     card_ids: tuple[str, str, str]
+
+
+class DrawTerritoryCardOperation(ContractModel):
+    action_type: Literal["draw_territory_card"]
+
+
+class DiscardTerritoryCardOperation(ContractModel):
+    action_type: Literal["discard_territory_card"]
+    card_id: str = Field(min_length=1)
 
 
 class AttackOperation(ContractModel):
@@ -808,6 +1222,11 @@ class MoveArmiesOperation(ContractModel):
     army_count: PositiveInt
 
 
+class EndPhaseOperation(ContractModel):
+    action_type: Literal["end_phase"]
+    phase_id: EndablePhaseId
+
+
 class EndTurnOperation(ContractModel):
     action_type: Literal["end_turn"]
 
@@ -816,9 +1235,12 @@ ActionOperation = Annotated[
     ClaimTerritoryOperation
     | PlaceArmiesOperation
     | TradeCardsOperation
+    | DrawTerritoryCardOperation
+    | DiscardTerritoryCardOperation
     | AttackOperation
     | OccupyTerritoryOperation
     | MoveArmiesOperation
+    | EndPhaseOperation
     | EndTurnOperation,
     Field(discriminator="action_type"),
 ]
@@ -1008,6 +1430,7 @@ class ChanceOutcome(ContractModel):
     event_id: str
     outcome: JsonValue
     visibility: Literal["public", "private"]
+    outcome_source: Literal["simulation", "site", "physical_board"]
     visible_to_player_ids: tuple[str, ...] = ()
 
 
@@ -1069,6 +1492,42 @@ class ReplayChanceEntry(ContractModel):
     outcome: ChanceOutcome
 
 
+class OfficialVictoryOutcome(ContractModel):
+    outcome_type: Literal["official_victory"]
+    winner_player_id: str = Field(min_length=1)
+
+
+class IndividualEliminationOutcome(ContractModel):
+    outcome_type: Literal["individual_elimination"]
+    eliminated_player_id: str = Field(min_length=1)
+
+
+class ResignationOutcome(ContractModel):
+    outcome_type: Literal["resignation"]
+    player_id: str = Field(min_length=1)
+
+
+class OperationalInterruptionOutcome(ContractModel):
+    outcome_type: Literal["operational_interruption"]
+    cause_code: str = Field(min_length=1)
+
+
+class TrainingTruncationOutcome(ContractModel):
+    outcome_type: Literal["training_truncation"]
+    limit_type: Literal["turn_count", "action_count", "time_budget_ms"]
+    limit_value: PositiveInt
+
+
+ReplayOutcome = Annotated[
+    OfficialVictoryOutcome
+    | IndividualEliminationOutcome
+    | ResignationOutcome
+    | OperationalInterruptionOutcome
+    | TrainingTruncationOutcome,
+    Field(discriminator="outcome_type"),
+]
+
+
 ReplayEntry = Annotated[
     ReplayActionEntry | ReplayChanceEntry,
     Field(discriminator="entry_type"),
@@ -1080,6 +1539,19 @@ def _validate_replay_entries(entries: tuple[ReplayEntry, ...]) -> None:
     expected_sequence_numbers = tuple(range(1, len(entries) + 1))
     if sequence_numbers != expected_sequence_numbers:
         raise ValueError("Replay entries must have contiguous sequence numbers from 1.")
+    chance_outcomes = tuple(
+        entry.outcome
+        for entry in entries
+        if isinstance(entry, ReplayChanceEntry)
+    )
+    _ensure_unique(
+        (outcome.request_id for outcome in chance_outcomes),
+        "Chance request IDs in replay",
+    )
+    _ensure_unique(
+        (outcome.event_id for outcome in chance_outcomes),
+        "Chance event IDs in replay",
+    )
 
 
 class FullReplay(ContractModel):
@@ -1093,6 +1565,7 @@ class FullReplay(ContractModel):
     rules_version: SemanticVersion
     initial_snapshot: Snapshot
     entries: tuple[ReplayEntry, ...] = ()
+    outcome: ReplayOutcome | None = None
     final_state_hash: Sha256Hash
 
     @model_validator(mode="after")
@@ -1125,6 +1598,7 @@ class PublicReplay(ContractModel):
     rules_version: SemanticVersion
     initial_snapshot: Snapshot
     entries: tuple[ReplayEntry, ...] = ()
+    outcome: ReplayOutcome | None = None
     final_state_hash: Sha256Hash
 
     @model_validator(mode="after")

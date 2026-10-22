@@ -6,11 +6,11 @@ from pydantic import BaseModel, ConfigDict, Field
 CONTRACT_SCHEMA_VERSION: Final = "1.0"
 API_VERSION: Final = "1.0.0"
 RULES_VERSION: Final = "1.0.0"
-OBSERVATION_SCHEMA_VERSION: Final = "1.0.0"
+OBSERVATION_SCHEMA_VERSION: Final = "1.9.0"
 OBSERVATION_ENCODING_VERSION: Final = "1.0.0"
-ACTION_SCHEMA_VERSION: Final = "1.0.0"
+ACTION_SCHEMA_VERSION: Final = "1.4.0"
 ACTION_ENCODING_VERSION: Final = "1.0.0"
-REPLAY_VERSION: Final = "1.0.0"
+REPLAY_VERSION: Final = "1.10.0"
 DATASET_VERSION: Final = "1.0.0"
 MODEL_VERSION: Final = "1.0.0"
 INFERENCE_CONFIG_VERSION: Final = "1.0.0"
@@ -18,8 +18,8 @@ GEOMETRY_VERSION: Final = "1.0.0"
 
 ContractSchemaVersionLiteral: TypeAlias = Literal["1.0"]
 ApiVersionLiteral: TypeAlias = Literal["1.0.0"]
-ObservationSchemaVersionLiteral: TypeAlias = Literal["1.0.0"]
-ActionSchemaVersionLiteral: TypeAlias = Literal["1.0.0"]
+ObservationSchemaVersionLiteral: TypeAlias = Literal["1.9.0"]
+ActionSchemaVersionLiteral: TypeAlias = Literal["1.4.0"]
 
 SemanticVersion = Annotated[
     str,

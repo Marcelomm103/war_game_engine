@@ -9,6 +9,7 @@
     "state_version": 7,
     "phase_id": "initial_placement",
     "turn_number": 1,
+    "has_conquered_territory_this_turn": false,
     "active_player_id": "player-1",
     "players": [
       {

@@ -5,7 +5,7 @@
     "contract_type": "player_observation",
     "game_id": "game-private-example",
     "player_id": "player-1",
-    "observation_schema_version": "1.0.0",
+    "observation_schema_version": "1.9.0",
     "state_version": 1,
     "public_state": {
       "contract_type": "public_game_state",
@@ -15,6 +15,7 @@
       "state_version": 1,
       "phase_id": "initial_placement",
       "turn_number": 1,
+      "has_conquered_territory_this_turn": false,
       "active_player_id": "player-1",
       "players": [
         {
@@ -68,7 +69,7 @@
         "contract_type": "action",
         "action_id": "action-1",
         "actor_player_id": "player-1",
-        "action_schema_version": "1.0.0",
+        "action_schema_version": "1.4.0",
         "expected_state_version": 1,
         "operation": {
           "action_type": "place_armies",

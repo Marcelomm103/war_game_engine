@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from typing import Literal, TypeAlias
 
 from pydantic import Field
 
@@ -21,20 +20,15 @@ from .contracts import (
     ReinforcementPool,
     TerritoryState,
 )
+from .objectives import (
+    ELIMINATION_OBJECTIVE_COLORS,
+    FALLBACK_OBJECTIVE_ID,
+    PlayerColor,
+)
 from .randomness import RandomStreams
+from .reinforcements import calculate_reinforcement_pools
 from .versioning import RULES_VERSION
 
-PlayerColor: TypeAlias = Literal["white", "red", "black", "blue", "yellow", "green"]
-
-ELIMINATION_OBJECTIVE_COLORS: dict[str, PlayerColor] = {
-    "W1-OBJ-01": "red",
-    "W1-OBJ-02": "blue",
-    "W1-OBJ-03": "white",
-    "W1-OBJ-04": "black",
-    "W1-OBJ-05": "yellow",
-    "W1-OBJ-06": "green",
-}
-FALLBACK_OBJECTIVE_ID = "W1-OBJ-13"
 PLAYER_COUNT_RANGE = (3, 6)
 
 
@@ -214,38 +208,14 @@ def prepare_game(
     }
     reinforcement_pools: list[ReinforcementPool] = []
     for player in player_specs:
-        owned_territories = territories_by_player[player.player_id]
-        territory_count = len(owned_territories)
-        reinforcement_pools.append(
-            ReinforcementPool(
-                pool_id=f"{player.player_id}:initial:territory-count",
-                player_id=player.player_id,
-                origin="territory_count",
-                remaining_armies=max(3, territory_count // 2),
+        reinforcement_pools.extend(
+            calculate_reinforcement_pools(
+                player.player_id,
+                territories,
+                board.map,
+                pool_scope="initial",
             )
         )
-        owned_territory_ids = {
-            territory.territory_id for territory in owned_territories
-        }
-        for continent in board.map.continents:
-            continent_territory_ids = tuple(
-                territory.territory_id
-                for territory in board.map.territories
-                if territory.continent_id == continent.continent_id
-            )
-            if set(continent_territory_ids).issubset(owned_territory_ids):
-                reinforcement_pools.append(
-                    ReinforcementPool(
-                        pool_id=(
-                            f"{player.player_id}:initial:continent:"
-                            f"{continent.continent_id}"
-                        ),
-                        player_id=player.player_id,
-                        origin="continent_bonus",
-                        remaining_armies=continent.reinforcement_bonus,
-                        allowed_territory_ids=continent_territory_ids,
-                    )
-                )
 
     full_players = tuple(
         FullPlayerState(
