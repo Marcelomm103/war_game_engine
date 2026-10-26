@@ -17,7 +17,15 @@ from war_game_engine.contracts import (
     parse_contract_json,
 )
 
-ROOT = Path(__file__).parents[3]
+
+def _workspace_root() -> Path:
+    for candidate in Path(__file__).resolve().parents:
+        if (candidate / "doc" / "war_adjacency_candidate_v1.0.json").is_file():
+            return candidate
+    raise RuntimeError("Could not locate the workspace root containing doc/.")
+
+
+ROOT = _workspace_root()
 
 
 def _valid_map_data() -> dict[str, object]:
@@ -55,6 +63,13 @@ def _validate_board(data: dict[str, object]) -> BoardSpec:
     return BoardSpec.model_validate_json(json.dumps(data))
 
 
+@pytest.mark.rule_id(
+    "W1-COMPONENTS-01",
+    "W1-CARD-SYMBOLS-01",
+    "W1-TERRITORY-ID-01",
+    "W1-CONTINENTS-01",
+    "W1-CONTINENT-BONUS-01",
+)
 def test_canonical_war1_board_has_expected_composition() -> None:
     board = WAR1_BOARD_SPEC
     territories = board.map.territories
@@ -100,6 +115,7 @@ def test_canonical_war1_board_has_expected_composition() -> None:
     )
 
 
+@pytest.mark.rule_id("W1-ADJACENCY-DATA-01", "W1-ADJACENCY-RULE-01")
 def test_canonical_adjacencies_match_the_user_corrected_json() -> None:
     source_path = ROOT / "doc" / "war_adjacency_candidate_v1.0.json"
     source: object = json.loads(source_path.read_text(encoding="utf-8"))
@@ -200,6 +216,16 @@ def test_map_rejects_duplicate_names_and_aliases_case_and_accent_insensitively()
         ValidationError, match="Territory names and aliases must be unique"
     ):
         _validate_map(data)
+
+    spaced_data = _valid_map_data()
+    spaced_territories = spaced_data["territories"]
+    assert isinstance(spaced_territories, list)
+    spaced_territories[0]["canonical_name"] = "North America"
+    spaced_territories[1]["aliases"] = (" NORTH   AMERICA ",)
+    with pytest.raises(
+        ValidationError, match="Territory names and aliases must be unique"
+    ):
+        _validate_map(spaced_data)
 
 
 def test_map_rejects_unknown_continents_and_empty_continents() -> None:

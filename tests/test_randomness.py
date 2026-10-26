@@ -24,6 +24,27 @@ def test_seed_reproduces_each_named_stream() -> None:
     )
 
 
+def test_named_stream_seed_derivation_has_stable_vectors() -> None:
+    streams = RandomStreams(128)
+
+    assert tuple(streams.die(stream_id) for stream_id in BASE_STREAMS) == (
+        1,
+        3,
+        5,
+        1,
+    )
+
+
+def test_generator_instances_are_cached_per_stream_id() -> None:
+    streams = RandomStreams(42)
+
+    first = streams.generator("combat")
+    first.integers(0, 100)
+    second = streams.generator("combat")
+
+    assert second is first
+
+
 def test_drawing_from_one_stream_does_not_advance_another() -> None:
     untouched = RandomStreams(42)
     used = RandomStreams(42)
@@ -53,6 +74,9 @@ def test_policy_streams_are_separate_and_reproducible() -> None:
     )
     with pytest.raises(ValueError, match="Policy ID must not be blank"):
         first.policy_generator(" ")
+
+    with pytest.raises(ValueError, match="base stream or a non-empty policy"):
+        first.generator("unknown-stream")
 
 
 def test_random_state_restores_every_stream_and_future_policy_streams() -> None:

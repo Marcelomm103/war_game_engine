@@ -3,6 +3,7 @@
     {
       "name": "three_players",
       "seed": 301,
+      "expected_distributor_player_id": "player-1",
       "colors": ["red", "blue", "green"],
       "expected_eligible_objectives": 11,
       "expected_sorted_territory_counts": [14, 14, 14]
@@ -10,6 +11,7 @@
     {
       "name": "four_players",
       "seed": 402,
+      "expected_distributor_player_id": "player-1",
       "colors": ["white", "red", "blue", "yellow"],
       "expected_eligible_objectives": 12,
       "expected_sorted_territory_counts": [10, 10, 11, 11]
@@ -17,6 +19,7 @@
     {
       "name": "five_players",
       "seed": 503,
+      "expected_distributor_player_id": "player-2",
       "colors": ["white", "red", "black", "blue", "green"],
       "expected_eligible_objectives": 13,
       "expected_sorted_territory_counts": [8, 8, 8, 9, 9]
@@ -24,6 +27,7 @@
     {
       "name": "six_players",
       "seed": 604,
+      "expected_distributor_player_id": "player-3",
       "colors": ["white", "red", "black", "blue", "yellow", "green"],
       "expected_eligible_objectives": 14,
       "expected_sorted_territory_counts": [7, 7, 7, 7, 7, 7]

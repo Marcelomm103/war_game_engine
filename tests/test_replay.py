@@ -1,7 +1,10 @@
 import json
 from datetime import datetime, timezone
+from typing import Literal, cast
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 from pydantic import ValidationError
 
 from war_game_engine.contracts import (
@@ -9,6 +12,7 @@ from war_game_engine.contracts import (
     ChanceOutcome,
     ContractEnvelope,
     FullGameState,
+    FullReplay,
     IncompatibleContractVersionError,
     IndividualEliminationOutcome,
     OfficialVictoryOutcome,
@@ -51,6 +55,70 @@ def _prepared_state() -> FullGameState:
         SetupPlayer(player_id="player-3", color="green"),
     )
     return prepare_game("replay-game", players, 17).state
+
+
+def _public_replay_inputs() -> tuple[
+    FullGameState,
+    FullReplay,
+    Snapshot,
+    Snapshot,
+    PublicGameState,
+]:
+    state = _prepared_state()
+    full_snapshot = create_snapshot(
+        "public-sanitization-full",
+        state,
+        visibility="full",
+    )
+    public_state = to_public_game_state(state)
+    public_snapshot = create_snapshot(
+        "public-sanitization-public",
+        public_state,
+        visibility="public",
+    )
+    full_replay = create_full_replay(
+        "public-sanitization-source",
+        full_snapshot,
+        (),
+        state,
+    )
+    return state, full_replay, full_snapshot, public_snapshot, public_state
+
+
+def _assert_public_sanitization_error(
+    full_replay: FullReplay,
+    public_initial_snapshot: Snapshot,
+    public_final_state: PublicGameState,
+    message: str,
+) -> None:
+    with pytest.raises(ValueError) as error_info:
+        sanitize_public_replay(
+            full_replay,
+            "public-sanitization-result",
+            public_initial_snapshot,
+            public_final_state,
+        )
+
+    assert str(error_info.value) == message
+
+
+def _assert_snapshot_error(
+    snapshot_id: str,
+    state: FullGameState | PublicGameState | PlayerObservation,
+    visibility: Literal["public", "full", "player_private"],
+    message: str,
+    *,
+    subject_player_id: str | None = None,
+) -> None:
+    with pytest.raises(SnapshotRestoreError) as error_info:
+        create_snapshot(
+            snapshot_id,
+            state,
+            visibility=visibility,
+            subject_player_id=subject_player_id,
+        )
+
+    assert str(error_info.value) == message
 
 
 def _state_with_individual_elimination() -> tuple[FullGameState, str]:
@@ -128,6 +196,19 @@ def test_canonical_json_hash_is_stable_across_model_round_trip() -> None:
     assert canonical_json_bytes({"z": 1, "a": 2}) == b'{"a":2,"z":1}'
 
 
+def test_canonical_json_serializes_model_timestamps() -> None:
+    snapshot = create_snapshot(
+        "canonical-time",
+        _prepared_state(),
+        visibility="full",
+        captured_at=datetime(2026, 10, 23, tzinfo=timezone.utc),
+    )
+
+    serialized = canonical_json_bytes(snapshot)
+
+    assert b'"captured_at":"2026-10-23T00:00:00Z"' in serialized
+
+
 def test_full_snapshot_restores_state_and_all_random_streams() -> None:
     state = _prepared_state()
     snapshot = create_snapshot("full-1", state, visibility="full")
@@ -182,8 +263,65 @@ def test_full_snapshot_requires_typed_random_state() -> None:
     data["random_streams_state"] = None
     legacy_state = FullGameState.model_validate(data)
 
-    with pytest.raises(SnapshotRestoreError, match="restorable random stream state"):
-        create_snapshot("legacy-full", legacy_state, visibility="full")
+    _assert_snapshot_error(
+        "legacy-full",
+        legacy_state,
+        "full",
+        "Full snapshots require a restorable random stream state.",
+    )
+
+
+def test_snapshot_creation_rejects_incompatible_visibility_and_state_types() -> None:
+    state = _prepared_state()
+    public_state = to_public_game_state(state)
+    player_id = state.decision_player_id
+    assert player_id is not None
+    player_observation = observe_player(state, player_id)
+
+    _assert_snapshot_error(
+        "wrong-full-state",
+        public_state,
+        "full",
+        "Full snapshots require FullGameState.",
+    )
+    _assert_snapshot_error(
+        "wrong-public-state",
+        state,
+        "public",
+        "Public snapshots require PublicGameState.",
+    )
+    _assert_snapshot_error(
+        "public-subject",
+        public_state,
+        "public",
+        "Public snapshots cannot have a subject player.",
+        subject_player_id=player_id,
+    )
+    _assert_snapshot_error(
+        "wrong-private-state",
+        public_state,
+        "player_private",
+        "Player-private snapshots require PlayerObservation.",
+        subject_player_id=player_id,
+    )
+    _assert_snapshot_error(
+        "private-subject-mismatch",
+        player_observation,
+        "player_private",
+        "Private snapshot subject must match its player.",
+        subject_player_id="another-player",
+    )
+    invalid_visibility = cast(
+        Literal["public", "full", "player_private"],
+        "internal",
+    )
+    with pytest.raises(SnapshotRestoreError) as error_info:
+        create_snapshot(
+            "unsupported-visibility",
+            public_state,
+            visibility=invalid_visibility,
+        )
+    assert str(error_info.value) == "Unsupported snapshot visibility 'internal'."
 
 
 def test_snapshot_hash_and_replay_schema_are_checked() -> None:
@@ -304,6 +442,7 @@ def test_full_replay_reexecutes_actions_and_chance_outcomes() -> None:
 
 def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
     initial_state = _prepared_state()
+    public_action = legal_actions(initial_state)[0]
     initial_full_snapshot = create_snapshot(
         "full-public-source",
         initial_state,
@@ -315,9 +454,14 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
         visibility="public",
     )
     entries = (
+        ReplayActionEntry(
+            entry_type="action",
+            sequence_number=1,
+            action=public_action,
+        ),
         ReplayChanceEntry(
             entry_type="chance_outcome",
-            sequence_number=1,
+            sequence_number=2,
             outcome=ChanceOutcome(
                 contract_type="chance_outcome",
                 request_id="secret-card",
@@ -330,7 +474,7 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
         ),
         ReplayChanceEntry(
             entry_type="chance_outcome",
-            sequence_number=2,
+            sequence_number=3,
             outcome=ChanceOutcome(
                 contract_type="chance_outcome",
                 request_id="visible-roll",
@@ -363,10 +507,14 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
 
     assert isinstance(public_replay, PublicReplay)
     assert public_replay.outcome == full_replay.outcome
-    assert len(public_replay.entries) == 1
-    public_entry = public_replay.entries[0]
+    assert len(public_replay.entries) == 2
+    public_action_entry = public_replay.entries[0]
+    assert isinstance(public_action_entry, ReplayActionEntry)
+    assert public_action_entry.sequence_number == 1
+    assert public_action_entry.action == public_action
+    public_entry = public_replay.entries[1]
     assert isinstance(public_entry, ReplayChanceEntry)
-    assert public_entry.sequence_number == 1
+    assert public_entry.sequence_number == 2
     assert public_entry.outcome.event_id == "public-roll"
     assert public_entry.outcome.outcome_source == "simulation"
     serialized = public_replay.model_dump_json()
@@ -374,8 +522,15 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
     assert "objective-01" not in serialized
     assert "root_seed" not in serialized
 
-    def unexpected_action(state: PublicGameState, _action: Action) -> PublicGameState:
-        raise AssertionError("No action entries should remain in this replay.")
+    seen_actions: list[Action] = []
+
+    def public_action_is_observable(
+        state: PublicGameState,
+        action: Action,
+    ) -> PublicGameState:
+        assert action == public_action
+        seen_actions.append(action)
+        return state
 
     def public_chance_is_observable(
         state: PublicGameState, outcome: ChanceOutcome
@@ -385,12 +540,88 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
 
     result = replay_public_replay(
         public_replay,
-        apply_action=unexpected_action,
+        apply_action=public_action_is_observable,
         apply_chance_outcome=public_chance_is_observable,
     )
     assert result.state == public_state
     assert result.random_streams is None
     assert result.outcome == full_replay.outcome
+    assert seen_actions == [public_action]
+
+    def identity_action(state: PublicGameState, _action: Action) -> PublicGameState:
+        return state
+
+    def identity_chance(
+        state: PublicGameState,
+        _outcome: ChanceOutcome,
+    ) -> PublicGameState:
+        return state
+
+    for changed_field, changed_value in (
+        ("game_id", "other-game"),
+        ("ruleset_id", "other-ruleset"),
+        ("rules_version", "2.0.0"),
+    ):
+
+        def mismatched_reducer(
+            state: PublicGameState,
+            _action: Action,
+        ) -> PublicGameState:
+            return state.model_copy(update={changed_field: changed_value})
+
+        with pytest.raises(ReplayDivergenceError) as error_info:
+            replay_public_replay(
+                public_replay,
+                apply_action=mismatched_reducer,
+                apply_chance_outcome=identity_chance,
+            )
+        assert str(error_info.value) == (
+            "Replay reducer returned a state for another game or ruleset."
+        )
+
+    invalid_hash_replay = public_replay.model_copy(
+        update={"final_state_hash": f"sha256:{'0' * 64}"}
+    )
+    with pytest.raises(ReplayDivergenceError) as hash_error_info:
+        replay_public_replay(
+            invalid_hash_replay,
+            apply_action=identity_action,
+            apply_chance_outcome=identity_chance,
+        )
+    assert str(hash_error_info.value) == (
+        "Public replay did not reproduce the recorded final state hash."
+    )
+
+    invalid_outcome_replay = public_replay.model_copy(
+        update={
+            "outcome": OfficialVictoryOutcome(
+                outcome_type="official_victory",
+                winner_player_id="player-1",
+            )
+        }
+    )
+    with pytest.raises(ReplayDivergenceError) as outcome_error_info:
+        replay_public_replay(
+            invalid_outcome_replay,
+            apply_action=identity_action,
+            apply_chance_outcome=identity_chance,
+        )
+    assert str(outcome_error_info.value) == (
+        "Public replay outcome does not match its final game state."
+    )
+
+    invalid_snapshot_replay = public_replay.model_copy(
+        update={"initial_snapshot": initial_full_snapshot}
+    )
+    with pytest.raises(SnapshotRestoreError) as restore_error_info:
+        replay_public_replay(
+            invalid_snapshot_replay,
+            apply_action=identity_action,
+            apply_chance_outcome=identity_chance,
+        )
+    assert str(restore_error_info.value) == (
+        "Public replay could not restore public state."
+    )
 
     envelope = ContractEnvelope(
         schema_version=CONTRACT_SCHEMA_VERSION,
@@ -398,6 +629,109 @@ def test_public_replay_is_separate_and_drops_private_chance_outcomes() -> None:
         payload=public_replay,
     )
     assert parse_contract_json(envelope.model_dump_json()).payload == public_replay
+
+
+def test_public_replay_sanitization_validates_visibility_and_state_types() -> None:
+    state, full_replay, full_snapshot, public_snapshot, public_state = (
+        _public_replay_inputs()
+    )
+
+    _assert_public_sanitization_error(
+        full_replay.model_copy(update={"initial_snapshot": public_snapshot}),
+        public_snapshot,
+        public_state,
+        "Only a full replay can be sanitized.",
+    )
+
+    invalid_full_snapshot = full_snapshot.model_copy(update={"state": public_state})
+    _assert_public_sanitization_error(
+        full_replay.model_copy(update={"initial_snapshot": invalid_full_snapshot}),
+        public_snapshot,
+        public_state,
+        "Full replay initial snapshot must contain FullGameState.",
+    )
+
+    _assert_public_sanitization_error(
+        full_replay,
+        full_snapshot,
+        public_state,
+        "Sanitized replays require a public initial snapshot.",
+    )
+
+    invalid_public_snapshot = public_snapshot.model_copy(update={"state": state})
+    _assert_public_sanitization_error(
+        full_replay,
+        invalid_public_snapshot,
+        public_state,
+        "Public replay snapshot must contain PublicGameState.",
+    )
+
+
+def test_public_replay_sanitization_validates_snapshot_and_final_state_identity() -> (
+    None
+):
+    _, full_replay, _, public_snapshot, public_state = _public_replay_inputs()
+
+    other_game_state = public_state.model_copy(update={"game_id": "other-game"})
+    other_game_snapshot = create_snapshot(
+        "public-sanitization-other-game",
+        other_game_state,
+        visibility="public",
+    )
+    _assert_public_sanitization_error(
+        full_replay,
+        other_game_snapshot,
+        public_state,
+        "Public snapshots must match the full replay game ID.",
+    )
+
+    inconsistent_initial_state = public_state.model_copy(
+        update={"state_version": public_state.state_version + 1}
+    )
+    inconsistent_initial_snapshot = create_snapshot(
+        "public-sanitization-inconsistent-initial",
+        inconsistent_initial_state,
+        visibility="public",
+    )
+    _assert_public_sanitization_error(
+        full_replay,
+        inconsistent_initial_snapshot,
+        public_state,
+        "Public initial snapshot does not match the full snapshot.",
+    )
+
+    for changed_field, changed_value in (
+        ("ruleset_id", "other-ruleset"),
+        ("rules_version", "2.0.0"),
+    ):
+        inconsistent_final_state = public_state.model_copy(
+            update={changed_field: changed_value}
+        )
+        _assert_public_sanitization_error(
+            full_replay,
+            public_snapshot,
+            inconsistent_final_state,
+            "Public final state does not match the full replay.",
+        )
+
+
+def test_public_replay_sanitization_validates_the_replay_outcome() -> None:
+    _, full_replay, _, public_snapshot, public_state = _public_replay_inputs()
+    invalid_replay = full_replay.model_copy(
+        update={
+            "outcome": OfficialVictoryOutcome(
+                outcome_type="official_victory",
+                winner_player_id="player-1",
+            )
+        }
+    )
+
+    _assert_public_sanitization_error(
+        invalid_replay,
+        public_snapshot,
+        public_state,
+        "Official-victory outcomes require a finished game state.",
+    )
 
 
 def test_training_truncation_is_not_recorded_as_a_game_victory() -> None:
@@ -443,6 +777,57 @@ def test_training_truncation_is_not_recorded_as_a_game_victory() -> None:
                 winner_player_id="player-1",
             ),
         )
+
+
+def test_full_replay_creation_rejects_mismatched_game_ids() -> None:
+    state = _prepared_state()
+    snapshot = create_snapshot(
+        "full-replay-mismatched-game",
+        state,
+        visibility="full",
+    )
+    final_state = state.model_copy(update={"game_id": "another-game"})
+
+    with pytest.raises(ValueError) as error_info:
+        create_full_replay(
+            "mismatched-game-replay",
+            snapshot,
+            (),
+            final_state,
+        )
+
+    assert str(error_info.value) == (
+        "Initial snapshot and final state game IDs must match."
+    )
+
+
+def test_full_replay_creation_rejects_finished_state_without_winner() -> None:
+    initial_state = _prepared_state()
+    snapshot = create_snapshot(
+        "full-replay-finished-without-winner",
+        initial_state,
+        visibility="full",
+    )
+    final_state = initial_state.model_copy(
+        update={
+            "phase_id": "finished",
+            "active_player_id": None,
+            "turn_player_id": None,
+            "decision_player_id": None,
+            "is_finished": True,
+            "winner_player_id": None,
+        }
+    )
+
+    with pytest.raises(ValueError) as error_info:
+        create_full_replay(
+            "finished-without-winner-replay",
+            snapshot,
+            (),
+            final_state,
+        )
+
+    assert str(error_info.value) == "Finished games require an official winner."
 
 
 def test_individual_elimination_replay_end_does_not_finish_the_game() -> None:
@@ -631,3 +1016,65 @@ def test_replay_rejects_incompatible_versions_and_divergence() -> None:
             apply_action=lambda state, _action, _streams: state,
             apply_chance_outcome=lambda state, _outcome, _streams: state,
         )
+
+
+@settings(max_examples=40, deadline=None)
+@given(seed=st.integers(min_value=0, max_value=2**32 - 1))
+def test_snapshot_restore_and_replay_preserve_generated_placement(
+    seed: int,
+) -> None:
+    players = (
+        SetupPlayer(player_id="player-1", color="red"),
+        SetupPlayer(player_id="player-2", color="blue"),
+        SetupPlayer(player_id="player-3", color="green"),
+    )
+    initial_state = prepare_game("metamorphic-replay", players, seed).state
+    initial_snapshot = create_snapshot(
+        "metamorphic-replay-initial",
+        initial_state,
+        visibility="full",
+    )
+    restored = restore_snapshot(initial_snapshot)
+    assert isinstance(restored.state, FullGameState)
+    assert restored.state == initial_state
+    action = legal_actions(initial_state)[0]
+    final_state = apply_action(initial_state, action)
+    assert apply_action(restored.state, action) == final_state
+
+    replay = create_full_replay(
+        "metamorphic-replay",
+        initial_snapshot,
+        (
+            ReplayActionEntry(
+                entry_type="action",
+                sequence_number=1,
+                action=action,
+            ),
+        ),
+        final_state,
+    )
+
+    def replay_action(
+        current_state: FullGameState,
+        replay_action: Action,
+        _streams: RandomStreams,
+    ) -> FullGameState:
+        return apply_action(current_state, replay_action)
+
+    def unexpected_chance(
+        current_state: FullGameState,
+        _outcome: ChanceOutcome,
+        _streams: RandomStreams,
+    ) -> FullGameState:
+        raise AssertionError("Placement replay must not contain chance outcomes.")
+
+    result = replay_full_replay(
+        replay,
+        apply_action=replay_action,
+        apply_chance_outcome=unexpected_chance,
+    )
+
+    assert result.state == final_state
+    assert result.random_streams is not None
+    assert result.random_streams.snapshot() == final_state.random_streams_state
+    assert result.outcome is None

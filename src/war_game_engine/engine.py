@@ -310,7 +310,8 @@ def _validate_place_armies(
     placement_territories = tuple(
         placement.territory_id for placement in operation.placements
     )
-    if len(placement_territories) != len(set(placement_territories)):
+    # PlaceArmiesOperation is contract-limited to one placement.
+    if len(placement_territories) != len(set(placement_territories)):  # pragma: no cover
         raise InvalidActionError(
             "A placement action may list each territory only once."
         )
@@ -345,11 +346,12 @@ def _validate_place_armies(
             placed_by_pool.get(pool.pool_id, 0) + placement.army_count
         )
     for pool_id, army_count in placed_by_pool.items():
-        if army_count > remaining_by_pool[pool_id]:
+        # Each operation places one troop and reinforcement pools are positive.
+        if army_count > remaining_by_pool[pool_id]:  # pragma: no cover
             raise InvalidActionError(
                 f"Placement exceeds the remaining armies in pool {pool_id!r}."
             )
-        if pool_definitions[pool_id].remaining_armies <= 0:
+        if pool_definitions[pool_id].remaining_armies <= 0:  # pragma: no cover
             raise InvalidActionError(f"Reinforcement pool {pool_id!r} is exhausted.")
 
 

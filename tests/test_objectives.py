@@ -128,6 +128,7 @@ def _objective_state(
     )
 
 
+@pytest.mark.rule_id("W1-OBJECTIVE-CATALOG-01")
 def test_typed_catalog_covers_every_canonical_objective() -> None:
     assert set(OBJECTIVE_CONDITIONS) == set(WAR1_BOARD_SPEC.objective_deck.card_ids)
     assert isinstance(OBJECTIVE_CONDITIONS["W1-OBJ-01"], EliminateColorCondition)
@@ -137,7 +138,15 @@ def test_typed_catalog_covers_every_canonical_objective() -> None:
 
 @pytest.mark.parametrize(
     ("objective_id", "target_color"),
-    tuple(ELIMINATION_OBJECTIVE_COLORS.items()),
+    tuple(
+        pytest.param(
+            objective_id,
+            target_color,
+            id=objective_id,
+            marks=pytest.mark.rule_id(objective_id),
+        )
+        for objective_id, target_color in ELIMINATION_OBJECTIVE_COLORS.items()
+    ),
 )
 def test_each_elimination_objective_requires_its_target_color_to_be_eliminated(
     objective_id: str,
@@ -168,8 +177,16 @@ def test_each_elimination_objective_requires_its_target_color_to_be_eliminated(
     )
 
     assert objective_is_satisfied(state, state.players[0]) is True
+    owners["T01"] = player_ids[1]
+    target_still_active = _objective_state(
+        objective_ids=objective_ids,
+        colors=colors,
+        owner_by_territory=owners,
+    )
+    assert not objective_is_satisfied(target_still_active, target_still_active.players[0])
 
 
+@pytest.mark.rule_id("W1-OBJ-13", "W1-OBJ-14")
 def test_territory_count_and_garrison_objectives_use_exact_thresholds() -> None:
     player_ids = ("player-1", "player-2", "player-3")
     owners = {
@@ -214,6 +231,7 @@ def test_territory_count_and_garrison_objectives_use_exact_thresholds() -> None:
     assert objective_is_satisfied(completed_garrison, completed_garrison.players[0])
 
 
+@pytest.mark.rule_id("W1-OBJ-07", "W1-OBJ-11")
 def test_continent_objectives_require_all_named_and_additional_continents() -> None:
     player_ids = ("player-1", "player-2", "player-3")
     north_america_and_oceania = {
@@ -262,10 +280,34 @@ def test_continent_objectives_require_all_named_and_additional_continents() -> N
 @pytest.mark.parametrize(
     ("objective_id", "required_continents", "additional_continents"),
     (
-        ("W1-OBJ-08", ("asia", "south_america"), ()),
-        ("W1-OBJ-09", ("asia", "africa"), ()),
-        ("W1-OBJ-10", ("north_america", "africa"), ()),
-        ("W1-OBJ-12", ("europe", "oceania"), ("asia",)),
+        pytest.param(
+            "W1-OBJ-08",
+            ("asia", "south_america"),
+            (),
+            id="W1-OBJ-08",
+            marks=pytest.mark.rule_id("W1-OBJ-08"),
+        ),
+        pytest.param(
+            "W1-OBJ-09",
+            ("asia", "africa"),
+            (),
+            id="W1-OBJ-09",
+            marks=pytest.mark.rule_id("W1-OBJ-09"),
+        ),
+        pytest.param(
+            "W1-OBJ-10",
+            ("north_america", "africa"),
+            (),
+            id="W1-OBJ-10",
+            marks=pytest.mark.rule_id("W1-OBJ-10"),
+        ),
+        pytest.param(
+            "W1-OBJ-12",
+            ("europe", "oceania"),
+            ("asia",),
+            id="W1-OBJ-12",
+            marks=pytest.mark.rule_id("W1-OBJ-12"),
+        ),
     ),
 )
 def test_remaining_continent_objectives_match_the_physical_catalog(
@@ -289,8 +331,21 @@ def test_remaining_continent_objectives_match_the_physical_catalog(
     )
 
     assert objective_is_satisfied(state, state.players[0])
+    incomplete_owners = dict(owners)
+    missing_territory_id = next(
+        territory.territory_id
+        for territory in WAR1_BOARD_SPEC.map.territories
+        if territory.continent_id == required_continents[0]
+    )
+    incomplete_owners[missing_territory_id] = player_ids[1]
+    incomplete_state = _objective_state(
+        objective_ids=(objective_id, "W1-OBJ-14", "W1-OBJ-13"),
+        owner_by_territory=incomplete_owners,
+    )
+    assert not objective_is_satisfied(incomplete_state, incomplete_state.players[0])
 
 
+@pytest.mark.rule_id("W1-OBJECTIVE-FALLBACK-01")
 def test_self_target_uses_card_fallback_and_missing_target_is_explicit() -> None:
     owners = {
         territory.territory_id: (
@@ -411,6 +466,7 @@ def test_continent_evaluation_rejects_incomplete_territory_state() -> None:
         objective_is_satisfied(partial_state, partial_state.players[0])
 
 
+@pytest.mark.rule_id("W1-VICTORY-01", "W1-OBJ-14")
 def test_objective_check_finishes_immediately_after_one_army_placement() -> None:
     player_ids = ("player-1", "player-2", "player-3")
     owners = {
@@ -490,6 +546,7 @@ def test_objective_check_finishes_immediately_after_one_army_placement() -> None
     assert public_state.winner_objective_fallback_id is None
 
 
+@pytest.mark.rule_id("W1-VICTORY-01")
 def test_unfinished_public_state_does_not_reveal_objectives() -> None:
     state = _objective_state()
 
@@ -500,6 +557,7 @@ def test_unfinished_public_state_does_not_reveal_objectives() -> None:
     assert public_state.winner_objective_fallback_id is None
 
 
+@pytest.mark.rule_id("W1-VICTORY-SIMULTANEOUS-01")
 def test_simultaneous_objectives_raise_adjudication_without_choosing_a_winner() -> None:
     player_ids = ("player-1", "player-2", "player-3")
     owners = {
@@ -535,3 +593,132 @@ def test_simultaneous_objectives_raise_adjudication_without_choosing_a_winner() 
     assert error.value.winner_player_ids == ("player-1", "player-2")
     assert error.value.state == state
     assert state.winner_player_id is None
+
+
+def test_objective_evaluation_rejects_missing_or_inconsistent_private_data() -> None:
+    state = _objective_state()
+    first_player = state.players[0]
+    missing_objective = FullGameState.model_validate(
+        {
+            **state.model_dump(mode="python"),
+            "players": (
+                FullPlayerState(
+                    public=first_player.public,
+                    private=PlayerPrivateState.model_validate(
+                        {
+                            **first_player.private.model_dump(),
+                            "objective_id": None,
+                        }
+                    ),
+                ),
+                *state.players[1:],
+            ),
+        }
+    )
+    with pytest.raises(InvalidObjectiveStateError, match="has no objective"):
+        objective_is_satisfied(missing_objective, missing_objective.players[0])
+
+    fallback_state = _objective_state(
+        objective_ids=("W1-OBJ-07", "W1-OBJ-14", "W1-OBJ-12")
+    )
+    invalid_fallback_data = fallback_state.model_dump(mode="python")
+    fallback_player = fallback_state.players[0]
+    invalid_fallback_data["players"] = (
+        FullPlayerState(
+            public=fallback_player.public,
+            private=PlayerPrivateState.model_validate(
+                {
+                    **fallback_player.private.model_dump(),
+                    "objective_id": "W1-OBJ-07",
+                    "objective_fallback_id": FALLBACK_OBJECTIVE_ID,
+                }
+            ),
+        ),
+        *fallback_state.players[1:],
+    )
+    invalid_fallback = FullGameState.model_validate(invalid_fallback_data)
+    with pytest.raises(InvalidObjectiveStateError, match="Invalid fallback"):
+        effective_objective_id(invalid_fallback.players[0])
+
+
+def test_objective_evaluation_rejects_absent_references() -> None:
+    absent_color_state = _objective_state(
+        objective_ids=("W1-OBJ-01", "W1-OBJ-14", "W1-OBJ-13"),
+        colors=("blue", "green", "yellow"),
+    )
+    with pytest.raises(InvalidObjectiveStateError, match="targets absent color"):
+        objective_is_satisfied(absent_color_state, absent_color_state.players[0])
+
+    continent_state = _objective_state(
+        objective_ids=("W1-OBJ-07", "W1-OBJ-14", "W1-OBJ-13"),
+    )
+    map_without_north_america = WAR1_BOARD_SPEC.map.model_copy(
+        update={
+            "continents": tuple(
+                continent
+                for continent in WAR1_BOARD_SPEC.map.continents
+                if continent.continent_id != "north_america"
+            )
+        }
+    )
+    with pytest.raises(InvalidObjectiveStateError, match="unknown continents"):
+        objective_is_satisfied(
+            continent_state,
+            continent_state.players[0],
+            board=map_without_north_america,
+        )
+
+    map_without_oceania_territories = WAR1_BOARD_SPEC.map.model_copy(
+        update={
+            "territories": tuple(
+                territory
+                for territory in WAR1_BOARD_SPEC.map.territories
+                if territory.continent_id != "oceania"
+            )
+        }
+    )
+    with pytest.raises(InvalidObjectiveStateError, match="has no territories"):
+        objective_is_satisfied(
+            continent_state,
+            continent_state.players[0],
+            board=map_without_oceania_territories,
+        )
+
+    objective_missing_from_board = WAR1_BOARD_SPEC.objective_deck.model_copy(
+        update={
+            "card_ids": tuple(
+                objective_id
+                for objective_id in WAR1_BOARD_SPEC.objective_deck.card_ids
+                if objective_id != "W1-OBJ-07"
+            )
+        }
+    )
+    board_without_objective = WAR1_BOARD_SPEC.model_copy(
+        update={"objective_deck": objective_missing_from_board}
+    )
+    with pytest.raises(InvalidObjectiveStateError, match="absent from BoardSpec"):
+        objective_is_satisfied(
+            continent_state,
+            continent_state.players[0],
+            board=board_without_objective,
+        )
+
+    pending_data = continent_state.model_dump(mode="python")
+    pending_data.update(
+        {
+            "phase_id": "objective_check",
+            "pending_objective_check": PendingObjectiveCheck(
+                contract_type="pending_objective_check",
+                actor_player_id="player-1",
+                territory_id="T01",
+                resume_phase_id="attack",
+                resume_decision_player_id="player-1",
+            ),
+        }
+    )
+    pending_state = FullGameState.model_validate(pending_data)
+    with pytest.raises(InvalidObjectiveStateError, match="absent from BoardSpec"):
+        resolve_pending_objective_check(
+            pending_state,
+            board=board_without_objective,
+        )

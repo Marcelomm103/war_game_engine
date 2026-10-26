@@ -25,6 +25,7 @@ FIXTURES = Path(__file__).parent / "fixtures" / "setup"
 class SetupScenario:
     name: str
     seed: int
+    expected_distributor_player_id: str
     players: tuple[SetupPlayer, ...]
     expected_eligible_objectives: int
     expected_sorted_territory_counts: tuple[int, ...]
@@ -46,12 +47,14 @@ def _load_scenarios() -> tuple[SetupScenario, ...]:
             raise AssertionError("Each setup scenario must be an object.")
         name = raw_scenario.get("name")
         seed = raw_scenario.get("seed")
+        distributor_player_id = raw_scenario.get("expected_distributor_player_id")
         colors = raw_scenario.get("colors")
         eligible_count = raw_scenario.get("expected_eligible_objectives")
         territory_counts = raw_scenario.get("expected_sorted_territory_counts")
         if (
             not isinstance(name, str)
             or not isinstance(seed, int)
+            or not isinstance(distributor_player_id, str)
             or not isinstance(colors, list)
             or not all(isinstance(color, str) for color in colors)
             or not isinstance(eligible_count, int)
@@ -69,6 +72,7 @@ def _load_scenarios() -> tuple[SetupScenario, ...]:
             SetupScenario(
                 name=name,
                 seed=seed,
+                expected_distributor_player_id=distributor_player_id,
                 players=player_specs,
                 expected_eligible_objectives=eligible_count,
                 expected_sorted_territory_counts=tuple(territory_counts),
@@ -78,6 +82,21 @@ def _load_scenarios() -> tuple[SetupScenario, ...]:
 
 
 @pytest.mark.parametrize("scenario", _load_scenarios(), ids=lambda item: item.name)
+@pytest.mark.rule_id(
+    "W1-PLAYER-COUNT-01",
+    "W1-COLOR-SET-01",
+    "W1-OBJECTIVE-DRAW-01",
+    "W1-OBJECTIVE-FILTER-01",
+    "W1-TERRITORY-DEAL-01",
+    "W1-TERRITORY-DEAL-SHUFFLE-01",
+    "W1-FIRST-REINFORCEMENT-01",
+    "W1-INITIAL-REINFORCEMENT-01",
+    "W1-INITIAL-PLACEMENT-01",
+    "W1-INITIAL-CONTINENT-BONUS-01",
+    "W1-ROUND-ORDER-01",
+    "W1-REINFORCEMENT-TERR-01",
+    "W1-REINFORCEMENT-CONT-01",
+)
 def test_prepare_game_covers_each_supported_player_count(
     scenario: SetupScenario,
 ) -> None:
@@ -107,18 +126,35 @@ def test_prepare_game_covers_each_supported_player_count(
     assert len(state.initial_placement_order) == len(scenario.players)
     assert state.decision_player_id is not None
     assert state.decision_player_id == state.initial_placement_order[0]
+    assert result.distributor_player_id == scenario.expected_distributor_player_id
     assert tuple(
         player_id for player_id, _ in result.distributor_roll_rounds[0]
     ) == tuple(player.player_id for player in scenario.players)
     assert len(result.territory_deal_order) == len(result.territory_recipients) == 42
 
-    recipient_after_last_card = result.territory_recipients[-1]
     seat_order = tuple(player.player_id for player in scenario.players)
-    next_seat = (seat_order.index(recipient_after_last_card) + 1) % len(
-        scenario.players
+    distributor_index = seat_order.index(scenario.expected_distributor_player_id)
+    expected_distribution_order = tuple(
+        seat_order[(distributor_index + offset) % len(seat_order)]
+        for offset in range(1, len(seat_order) + 1)
     )
-    expected_start = seat_order[next_seat]
-    assert state.initial_placement_order[0] == expected_start
+    expected_recipients = tuple(
+        expected_distribution_order[index % len(expected_distribution_order)]
+        for index in range(42)
+    )
+    assert result.territory_recipients == expected_recipients
+
+    expected_last_recipient = seat_order[
+        (distributor_index + len(result.territory_deal_order)) % len(seat_order)
+    ]
+    assert result.territory_recipients[-1] == expected_last_recipient
+    expected_initial_order = tuple(
+        seat_order[
+            (seat_order.index(expected_last_recipient) + offset) % len(seat_order)
+        ]
+        for offset in range(1, len(seat_order) + 1)
+    )
+    assert state.initial_placement_order == expected_initial_order
 
     assert {player.private.player_id for player in state.players} == {
         player.player_id for player in scenario.players
@@ -178,6 +214,7 @@ def test_prepare_game_covers_each_supported_player_count(
     assert "bit_generator_state" not in serialized_observation
 
 
+@pytest.mark.rule_id("W1-OBJECTIVE-DRAW-01", "W1-TERRITORY-DEAL-SHUFFLE-01")
 def test_setup_is_reproducible_and_uses_separate_random_streams() -> None:
     players = (
         SetupPlayer(player_id="player-1", color="red"),
@@ -193,6 +230,7 @@ def test_setup_is_reproducible_and_uses_separate_random_streams() -> None:
     assert first.state.engine_random_state is None
 
 
+@pytest.mark.rule_id("W1-OBJECTIVE-FILTER-01", "W1-OBJECTIVE-DRAW-01")
 def test_objectives_for_absent_colors_are_filtered_without_fallback_defaults() -> None:
     players = (
         SetupPlayer(player_id="player-1", color="red"),
@@ -220,6 +258,7 @@ def test_objectives_for_absent_colors_are_filtered_without_fallback_defaults() -
     )
 
 
+@pytest.mark.rule_id("W1-OBJECTIVE-FALLBACK-01")
 def test_own_color_elimination_mission_uses_the_printed_fallback() -> None:
     assert _fallback_objective_id("W1-OBJ-01", "red") == FALLBACK_OBJECTIVE_ID
     assert _fallback_objective_id("W1-OBJ-03", "red") is None
@@ -244,6 +283,7 @@ def test_own_color_elimination_mission_uses_the_printed_fallback() -> None:
     assert fallback_found
 
 
+@pytest.mark.rule_id("W1-DISTRIBUTOR-01")
 def test_distributor_ties_reroll_only_the_current_tied_players() -> None:
     outcomes = iter((6, 6, 1, 4, 5))
     roll_order: list[str] = []
@@ -262,6 +302,7 @@ def test_distributor_ties_reroll_only_the_current_tied_players() -> None:
     )
 
 
+@pytest.mark.rule_id("W1-DISTRIBUTOR-01")
 def test_persistent_distributor_ties_continue_until_unique_winner() -> None:
     outcomes = iter((4, 4, 4, 6, 6, 2, 3, 5))
     roll_order: list[str] = []
@@ -290,10 +331,30 @@ def test_persistent_distributor_ties_continue_until_unique_winner() -> None:
         (
             (
                 SetupPlayer(player_id="p1", color="red"),
+                SetupPlayer(player_id="p2", color="blue"),
+                SetupPlayer(player_id="p3", color="green"),
+                SetupPlayer(player_id="p4", color="white"),
+                SetupPlayer(player_id="p5", color="black"),
+                SetupPlayer(player_id="p6", color="yellow"),
+                SetupPlayer(player_id="p7", color="red"),
+            ),
+            "between 3 and 6 players",
+        ),
+        (
+            (
+                SetupPlayer(player_id="p1", color="red"),
                 SetupPlayer(player_id="p1", color="blue"),
                 SetupPlayer(player_id="p3", color="green"),
             ),
             "Player IDs must be unique",
+        ),
+        (
+            (
+                SetupPlayer(player_id=" ", color="red"),
+                SetupPlayer(player_id="p2", color="blue"),
+                SetupPlayer(player_id="p3", color="green"),
+            ),
+            "Player IDs must not be blank",
         ),
         (
             (
@@ -305,6 +366,7 @@ def test_persistent_distributor_ties_continue_until_unique_winner() -> None:
         ),
     ),
 )
+@pytest.mark.rule_id("W1-PLAYER-COUNT-01", "W1-COLOR-SET-01")
 def test_setup_rejects_invalid_player_configuration(
     players: tuple[SetupPlayer, ...], message: str
 ) -> None:
@@ -324,6 +386,114 @@ def test_setup_rejects_invalid_seeds_and_game_ids() -> None:
         prepare_game(" ", players, 1)
 
 
+@pytest.mark.rule_id("W1-DISTRIBUTOR-01")
 def test_invalid_distributor_roll_is_an_error() -> None:
     with pytest.raises(InvalidSetupError, match="between 1 and 6"):
         _choose_distributor(("p1",), lambda _player_id: 0)
+
+
+@pytest.mark.rule_id("W1-DISTRIBUTOR-01")
+def test_boolean_distributor_roll_is_not_a_valid_die_face() -> None:
+    with pytest.raises(InvalidSetupError, match="between 1 and 6"):
+        _choose_distributor(("p1",), lambda _player_id: True)
+
+
+def test_prepare_game_rejects_incomplete_board_catalogs() -> None:
+    players = (
+        SetupPlayer(player_id="player-1", color="red"),
+        SetupPlayer(player_id="player-2", color="blue"),
+        SetupPlayer(player_id="player-3", color="green"),
+    )
+    incomplete_map = WAR1_BOARD_SPEC.map.model_copy(
+        update={"territories": WAR1_BOARD_SPEC.map.territories[:-1]}
+    )
+    incomplete_board = WAR1_BOARD_SPEC.model_copy(update={"map": incomplete_map})
+    with pytest.raises(InvalidSetupError, match="42 territories and 14 objectives"):
+        prepare_game("incomplete-map", players, 1, board=incomplete_board)
+
+    missing_objectives = tuple(
+        objective.model_copy(update={"objective_id": "W1-OBJ-99"})
+        if objective.objective_id == "W1-OBJ-01"
+        else objective
+        for objective in WAR1_BOARD_SPEC.objectives
+    )
+    incomplete_objectives = WAR1_BOARD_SPEC.model_copy(
+        update={"objectives": missing_objectives}
+    )
+    with pytest.raises(InvalidSetupError, match="missing setup objectives"):
+        prepare_game(
+            "incomplete-objectives",
+            players,
+            2,
+            board=incomplete_objectives,
+        )
+
+    filtered_objectives = tuple(
+        objective.model_copy(update={"objective_id": "W1-OBJ-03"})
+        if objective.objective_id == "W1-OBJ-14"
+        else objective
+        for objective in WAR1_BOARD_SPEC.objectives
+    )
+    invalid_filter_board = WAR1_BOARD_SPEC.model_copy(
+        update={"objectives": filtered_objectives}
+    )
+    with pytest.raises(InvalidSetupError, match="unexpected number"):
+        prepare_game(
+            "invalid-objective-filter",
+            players,
+            3,
+            board=invalid_filter_board,
+        )
+
+    incomplete_deck = WAR1_BOARD_SPEC.territory_deck.model_copy(
+        update={
+            "card_ids": tuple(
+                card_id
+                for card_id in WAR1_BOARD_SPEC.territory_deck.card_ids
+                if card_id != "T42"
+            )
+        }
+    )
+    invalid_deck_board = WAR1_BOARD_SPEC.model_copy(
+        update={"territory_deck": incomplete_deck}
+    )
+    with pytest.raises(
+        InvalidSetupError,
+        match="one card for each canonical territory",
+    ):
+        prepare_game(
+            "incomplete-territory-deck",
+            players,
+            4,
+            board=invalid_deck_board,
+        )
+
+
+@pytest.mark.rule_id("W1-INITIAL-CONTINENT-BONUS-01", "W1-CONTINENT-BONUS-01")
+def test_initial_setup_applies_a_complete_continent_bonus() -> None:
+    players = (
+        SetupPlayer(player_id="player-1", color="red"),
+        SetupPlayer(player_id="player-2", color="blue"),
+        SetupPlayer(player_id="player-3", color="green"),
+    )
+
+    result = prepare_game("initial-continent-bonus", players, 0)
+
+    oceania_territory_ids = ("T01", "T02", "T03", "T04")
+    owners = {
+        territory.territory_id: territory.owner_player_id
+        for territory in result.state.territories
+    }
+    assert {owners[territory_id] for territory_id in oceania_territory_ids} == {
+        "player-1"
+    }
+    bonus_pools = tuple(
+        pool
+        for pool in result.state.reinforcement_pools
+        if pool.player_id == "player-1" and pool.origin == "continent_bonus"
+    )
+    assert len(bonus_pools) == 1
+    assert bonus_pools[0].remaining_armies == 2
+    assert bonus_pools[0].allowed_territory_ids == oceania_territory_ids
+    assert result.state.phase_id == "initial_placement"
+    assert result.state.turn_number == 1

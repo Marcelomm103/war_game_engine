@@ -17,9 +17,36 @@ NumPy and Pydantic are runtime dependencies for numerical work and validated
 contracts. Importing `war_game_engine` does not import graphical or
 neural-network libraries.
 
-Ruff, mypy, and mutmut are pinned in the `quality` extra. The engine test suite
-covers canonical data, state projections, setup, action validation, random
-streams, snapshots, and replay foundations.
+Coverage.py, Ruff, mypy, and mutmut are pinned in the `quality` extra. The
+engine test suite covers canonical data, state projections, setup, action
+validation, random streams, snapshots, and replay foundations.
+
+Run branch coverage on the engine tests and the mutation campaign from this
+directory:
+
+```bash
+python -m coverage run --branch --source=src/war_game_engine -m pytest -q tests
+python -m coverage report --include=src/war_game_engine/engine.py,src/war_game_engine/combat.py,src/war_game_engine/objectives.py,src/war_game_engine/reinforcements.py,src/war_game_engine/setup.py
+mutmut run --max-children 4
+mutmut results --all True
+```
+
+The standalone stress runner records completed games, truncations, crashes,
+invariant failures, transition counts, and full-replay divergences separately:
+the JSON report also includes transition counts by source phase.
+
+```bash
+python scripts/stress_engine.py --games 8 --max-transitions-per-game 30 --seed 42 --workers 4
+```
+
+Increase `--games` and `--max-transitions-per-game` for longer campaigns.
+`--workers` runs independent deterministic game indices in parallel. Truncated
+episodes are never counted as completed games; the report records them
+separately from crashes and replay divergences. A game is truncated only when
+it is still nonterminal after reaching the per-game transition limit. One
+transition is one applied action or one resolved combat outcome. Initialization
+or transition exceptions are counted as crashes instead, and no wall-clock
+timeout is used to decide whether a game is truncated.
 
 The canonical transport models are in `war_game_engine.contracts`. Regenerate
 their JSON Schema from this directory with:

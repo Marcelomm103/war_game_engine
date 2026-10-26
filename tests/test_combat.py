@@ -37,6 +37,7 @@ def _independent_loss_distribution(
     }
 
 
+@pytest.mark.rule_id("W1-BATTLE-COMPARISON-01")
 def test_manual_example_resolves_ordering_and_ties_for_defense() -> None:
     assert resolve_combat_round((5, 4, 1), (6, 3, 1)) == (2, 1)
     assert resolve_combat_round((4,), (4,)) == (1, 0)
@@ -48,6 +49,7 @@ def test_unpaired_dice_do_not_cause_losses() -> None:
 
 @pytest.mark.parametrize("attacker_dice_count", range(1, 4))
 @pytest.mark.parametrize("defender_dice_count", range(1, 4))
+@pytest.mark.rule_id("W1-BATTLE-COMPARISON-01")
 def test_exact_loss_distribution_matches_independent_exhaustive_resolver(
     attacker_dice_count: int,
     defender_dice_count: int,
