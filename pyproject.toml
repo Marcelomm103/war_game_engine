@@ -13,6 +13,9 @@ dependencies = [
     "pydantic==2.14.1",
 ]
 
+[project.scripts]
+war-play = "war_game_engine.runner:main"
+
 [project.optional-dependencies]
 test = [
     "hypothesis==6.130.2",
@@ -29,7 +32,7 @@ quality = [
 where = ["src"]
 
 [tool.setuptools.package-data]
-war_game_engine = ["schemas/*.json"]
+war_game_engine = ["py.typed", "schemas/*.json"]
 
 [tool.ruff]
 line-length = 88

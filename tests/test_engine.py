@@ -2737,7 +2737,11 @@ def test_legal_movement_actions_are_direct_and_leave_a_garrison() -> None:
     assert {
         (move.origin_territory_id, move.target_territory_id, move.army_count)
         for move in moves
-    } == {("T01", "T02", 1)}
+    } == {
+        ("T01", "T02", 1),
+        ("T01", "T02", 2),
+        ("T01", "T02", 3),
+    }
     assert any(isinstance(action.operation, EndPhaseOperation) for action in actions)
 
 

@@ -1,0 +1,226 @@
+{
+  "environment": {
+    "logical_cpu_count": 28,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.36",
+    "processor": null,
+    "python_implementation": "CPython",
+    "python_version": "3.11.17"
+  },
+  "game_campaign": {
+    "attempted_games": 3,
+    "attempted_games_per_second": 0.0645,
+    "completed_games": 1,
+    "completed_games_per_second": 0.0215,
+    "crashed_games": 0,
+    "elapsed_seconds": 46.513895,
+    "invariant_violations": 0,
+    "max_transitions_per_game": 5000,
+    "replay_checks": 3,
+    "replay_divergences": 0,
+    "requested_games": 3,
+    "seed": 20261023,
+    "timed_scope": "engine setup, random legal actions, state invariant validation, and full replay verification; excludes process startup",
+    "transitions": 11618,
+    "transitions_per_second": 249.77,
+    "truncated_games": 2
+  },
+  "measured_at_utc": "2026-10-27T00:15:49.402652+00:00",
+  "microbenchmarks": {
+    "action_generation_by_phase": {
+      "attack": {
+        "action_signature_sha256": "sha256:83a123f155cb85016a8475cd61eedd178abe2651a9f5a6d6b0d005836d9b6c8c",
+        "actions_per_call": 4,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 22.379,
+          "median_us": 21.532,
+          "operations_per_second": 44684.75,
+          "p95_us": 27.011
+        },
+        "phase_id": "attack",
+        "top_cumulative_profile_functions": []
+      },
+      "card_discard_synthetic": {
+        "action_signature_sha256": "sha256:e22b4b94decb59ec650b70d0459f261850889efedb8fa16cac4ebffdcec856f6",
+        "actions_per_call": 6,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 40.137,
+          "median_us": 37.547,
+          "operations_per_second": 24914.48,
+          "p95_us": 40.584
+        },
+        "phase_id": "card_discard",
+        "top_cumulative_profile_functions": []
+      },
+      "card_purchase_synthetic": {
+        "action_signature_sha256": "sha256:5054af5e363439c49a3c4874ec2c072e6d15e8d6db582e9a81231c91c71a28d7",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 8.634,
+          "median_us": 8.636,
+          "operations_per_second": 115825.2,
+          "p95_us": 8.92
+        },
+        "phase_id": "card_purchase",
+        "top_cumulative_profile_functions": []
+      },
+      "initial_placement": {
+        "action_signature_sha256": "sha256:f42f61758cfaadc12e0483c6750c018aeb7718435810c18cbf5a9c82f5064367",
+        "actions_per_call": 14,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 45.457,
+          "median_us": 44.775,
+          "operations_per_second": 21998.67,
+          "p95_us": 45.998
+        },
+        "phase_id": "initial_placement",
+        "top_cumulative_profile_functions": []
+      },
+      "movement": {
+        "action_signature_sha256": "sha256:3ef795c620086a481bf883cb32fca157d322dcfb130174242ae21eab9120bc2a",
+        "actions_per_call": 2,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 47.273,
+          "median_us": 40.368,
+          "operations_per_second": 21153.81,
+          "p95_us": 57.744
+        },
+        "phase_id": "movement",
+        "top_cumulative_profile_functions": []
+      },
+      "occupation_synthetic": {
+        "action_signature_sha256": "sha256:29ea63ab0a5bc4f71e9d504eb907c307d2c6670c2d2498799f83fae009372e6c",
+        "actions_per_call": 3,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 18.212,
+          "median_us": 18.11,
+          "operations_per_second": 54909.76,
+          "p95_us": 18.722
+        },
+        "phase_id": "occupation",
+        "top_cumulative_profile_functions": []
+      },
+      "reinforcement": {
+        "action_signature_sha256": "sha256:d95302ba686f52a1e7a50b1d1aceda9fa7c43ffaecb692269b444a30b691d6e2",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 7.081,
+          "median_us": 7.076,
+          "operations_per_second": 141218.01,
+          "p95_us": 7.417
+        },
+        "phase_id": "reinforcement",
+        "top_cumulative_profile_functions": []
+      },
+      "reinforcement_placement": {
+        "action_signature_sha256": "sha256:ed5966a873c3762dd3bc75696a091f70755092d811c0cbefed63abc5287340cb",
+        "actions_per_call": 14,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 44.983,
+          "median_us": 44.367,
+          "operations_per_second": 22230.52,
+          "p95_us": 46.921
+        },
+        "phase_id": "reinforcement_placement",
+        "top_cumulative_profile_functions": []
+      },
+      "reinforcement_with_five_cards_synthetic": {
+        "action_signature_sha256": "sha256:e749605e0c9defeb36e70ebb9d55890be3ffe5c75739f8ce5c8624791b435495",
+        "actions_per_call": 5,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 38.233,
+          "median_us": 34.385,
+          "operations_per_second": 26155.42,
+          "p95_us": 52.495
+        },
+        "phase_id": "reinforcement",
+        "top_cumulative_profile_functions": []
+      },
+      "territory_claim_synthetic": {
+        "action_signature_sha256": "sha256:22795716b898c9bd128e978067d7afe66d1f461632d85d378ea93bb05ec1c3c2",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 11.292,
+          "median_us": 8.048,
+          "operations_per_second": 88559.06,
+          "p95_us": 30.489
+        },
+        "phase_id": "territory_claim",
+        "top_cumulative_profile_functions": []
+      },
+      "turn_end": {
+        "action_signature_sha256": "sha256:534beff3f9ba7b808ebda0301829e2350988b1131d822883fef61e4e99d5cfbb",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 20,
+          "mean_us": 5.711,
+          "median_us": 5.67,
+          "operations_per_second": 175091.49,
+          "p95_us": 5.874
+        },
+        "phase_id": "turn_end",
+        "top_cumulative_profile_functions": []
+      }
+    },
+    "cloning": {
+      "pydantic_deep_model_copy": {
+        "iterations": 20,
+        "mean_us": 133.497,
+        "median_us": 130.876,
+        "operations_per_second": 7490.79,
+        "p95_us": 146.49
+      },
+      "pydantic_shallow_model_copy": {
+        "iterations": 20,
+        "mean_us": 0.902,
+        "median_us": 0.839,
+        "operations_per_second": 1108217.43,
+        "p95_us": 1.226
+      },
+      "state_model_validate_from_pre_dumped_dict": {
+        "iterations": 20,
+        "mean_us": 55.792,
+        "median_us": 54.763,
+        "operations_per_second": 17923.86,
+        "p95_us": 57.29
+      }
+    },
+    "iterations": 20,
+    "memory": {
+      "canonical_state_json_bytes": 6056,
+      "clone_state_hash_matches": 1,
+      "measurement_scope": "tracemalloc Python allocations; excludes native allocations",
+      "tracked_python_bytes_peak_during_deep_clone": 42920,
+      "tracked_python_bytes_peak_during_setup": 61374,
+      "tracked_python_bytes_retained_by_deep_clone": 33808,
+      "tracked_python_bytes_retained_by_initial_state": 45166
+    },
+    "seed": 20261023,
+    "validation": {
+      "full_state_validation_from_pre_dumped_dict": {
+        "iterations": 20,
+        "mean_us": 56.091,
+        "median_us": 54.48,
+        "operations_per_second": 17828.25,
+        "p95_us": 65.896
+      },
+      "single_legal_attack_action": {
+        "iterations": 20,
+        "mean_us": 5.944,
+        "median_us": 5.933,
+        "operations_per_second": 168225.56,
+        "p95_us": 6.162
+      }
+    }
+  },
+  "schema_version": "1.0"
+}

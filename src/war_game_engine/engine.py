@@ -55,6 +55,11 @@ from .reinforcements import calculate_reinforcement_pools
 from .versioning import ACTION_SCHEMA_VERSION
 
 BoardLike: TypeAlias = MapSpec | BoardSpec
+TradeCardCatalog: TypeAlias = tuple[
+    frozenset[str],
+    frozenset[str],
+    dict[str, str | None],
+]
 
 
 class InvalidActionError(ValueError):
@@ -99,16 +104,28 @@ def _known_card_ids(board: BoardLike) -> set[str]:
     } | set(_wildcard_card_ids(board))
 
 
-def _trade_set_is_valid(card_ids: tuple[str, ...], board: BoardLike) -> bool:
+def _trade_card_catalog(board: BoardLike) -> TradeCardCatalog:
+    wildcard_ids = frozenset(_wildcard_card_ids(board))
+    territory_symbols: dict[str, str | None] = {
+        territory.territory_id: territory.card_symbol
+        for territory in _map_spec(board).territories
+    }
+    known_card_ids = frozenset(set(territory_symbols) | set(wildcard_ids))
+    return known_card_ids, wildcard_ids, territory_symbols
+
+
+def _trade_set_is_valid(
+    card_ids: tuple[str, ...],
+    board: BoardLike,
+    *,
+    card_catalog: TradeCardCatalog | None = None,
+) -> bool:
     if len(card_ids) != 3:
         return False
-    map_spec = _map_spec(board)
-    wildcard_ids = set(_wildcard_card_ids(board))
-    territory_symbols = {
-        territory.territory_id: territory.card_symbol
-        for territory in map_spec.territories
-    }
-    unknown_card_ids = sorted(set(card_ids) - _known_card_ids(board))
+    known_card_ids, wildcard_ids, territory_symbols = (
+        _trade_card_catalog(board) if card_catalog is None else card_catalog
+    )
+    unknown_card_ids = sorted(set(card_ids) - known_card_ids)
     if unknown_card_ids:
         raise InvalidActionError(
             f"Unknown territory card IDs: {', '.join(unknown_card_ids)}."
@@ -153,6 +170,21 @@ def _adjacent(map_spec: MapSpec, first_territory_id: str, second_territory_id: s
 
 def _current_decision_player_id(state: FullGameState) -> str | None:
     return state.decision_player_id or state.active_player_id
+
+
+def _validate_state_territories_for_board(
+    state: FullGameState,
+    board: BoardLike,
+) -> set[str]:
+    board_territory_ids = {
+        territory.territory_id for territory in _map_spec(board).territories
+    }
+    if any(
+        territory.territory_id not in board_territory_ids
+        for territory in state.territories
+    ):
+        raise InvalidActionError("State contains a territory absent from BoardSpec.")
+    return board_territory_ids
 
 
 def _objective_resume_phase_id(
@@ -572,15 +604,7 @@ def validate_action(
             f"Player {action.actor_player_id!r} is not responsible for the next "
             f"decision; expected {decision_player_id!r}."
         )
-    map_spec = _map_spec(board)
-    board_territory_ids = {
-        territory.territory_id for territory in map_spec.territories
-    }
-    if any(
-        territory.territory_id not in board_territory_ids
-        for territory in state.territories
-    ):
-        raise InvalidActionError("State contains a territory absent from BoardSpec.")
+    board_territory_ids = _validate_state_territories_for_board(state, board)
 
     operation = action.operation
     if isinstance(operation, ClaimTerritoryOperation):
@@ -741,8 +765,26 @@ def legal_actions(
                         placement_phase=placement_phase,
                     ),
                 )
-                validate_action(state, action, board=board)
                 candidates.append(action)
+        if candidates:
+            _validate_state_territories_for_board(state, board)
+            if (
+                state.phase_id == "initial_placement"
+                and decision_player_id not in state.initial_placement_order
+            ):
+                raise InvalidActionError(
+                    "Initial placement requires an explicit player order."
+                )
+            if (
+                state.phase_id == "reinforcement_placement"
+                and any(
+                    pool.player_id != decision_player_id
+                    for pool in state.reinforcement_pools
+                )
+            ):
+                raise InvalidActionError(
+                    "Reinforcement placement may only use the active player's pools."
+                )
         return tuple(candidates)
 
     if state.phase_id == "reinforcement":
@@ -755,8 +797,18 @@ def legal_actions(
             raise InvalidActionError(
                 f"Unknown player ID {decision_player_id!r}."
             )
+        trade_card_catalog = (
+            _trade_card_catalog(board)
+            if len(player.private.hand_card_ids) >= 3
+            else None
+        )
+        trade_action_validated = False
         for card_ids in combinations(player.private.hand_card_ids, 3):
-            if not _trade_set_is_valid(card_ids, board):
+            if not _trade_set_is_valid(
+                card_ids,
+                board,
+                card_catalog=trade_card_catalog,
+            ):
                 continue
             action = Action(
                 contract_type="action",
@@ -769,7 +821,10 @@ def legal_actions(
                     card_ids=card_ids,
                 ),
             )
-            validate_action(state, action, board=board)
+            if not trade_action_validated:
+                # Set-specific validity was checked above for every candidate.
+                validate_action(state, action, board=board)
+                trade_action_validated = True
             candidates.append(action)
 
         action = Action(
@@ -825,7 +880,6 @@ def legal_actions(
                             dice_count=dice_count,
                         ),
                     )
-                    validate_action(state, action, board=board)
                     candidates.append(action)
         end_attack_action = Action(
             contract_type="action",
@@ -848,10 +902,11 @@ def legal_actions(
         for origin in state.territories:
             if origin.owner_player_id != decision_player_id:
                 continue
-            if min(
+            max_army_count = min(
                 _unmoved_army_count(state, origin.territory_id),
                 origin.army_count - 1,
-            ) < 1:
+            )
+            if max_army_count < 1:
                 continue
             for adjacency in map_spec.adjacencies:
                 if adjacency.first_territory_id == origin.territory_id:
@@ -866,21 +921,21 @@ def legal_actions(
                     or target.owner_player_id != decision_player_id
                 ):
                     continue
-                action = Action(
-                    contract_type="action",
-                    action_id=f"legal-{state.state_version}-{len(candidates)}",
-                    actor_player_id=decision_player_id,
-                    action_schema_version=ACTION_SCHEMA_VERSION,
-                    expected_state_version=state.state_version,
-                    operation=MoveArmiesOperation(
-                        action_type="move_armies",
-                        origin_territory_id=origin.territory_id,
-                        target_territory_id=target_id,
-                        army_count=1,
-                    ),
-                )
-                validate_action(state, action, board=board)
-                candidates.append(action)
+                for army_count in range(1, max_army_count + 1):
+                    action = Action(
+                        contract_type="action",
+                        action_id=f"legal-{state.state_version}-{len(candidates)}",
+                        actor_player_id=decision_player_id,
+                        action_schema_version=ACTION_SCHEMA_VERSION,
+                        expected_state_version=state.state_version,
+                        operation=MoveArmiesOperation(
+                            action_type="move_armies",
+                            origin_territory_id=origin.territory_id,
+                            target_territory_id=target_id,
+                            army_count=army_count,
+                        ),
+                    )
+                    candidates.append(action)
 
         action = Action(
             contract_type="action",

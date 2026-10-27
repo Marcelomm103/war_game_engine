@@ -61,6 +61,77 @@ adjacencies, territory and objective decks, and source references for each
 catalog entry. Invalid IDs, graph references, duplicate cards or objectives,
 and incomplete provenance are rejected during model validation.
 
+## Human versus agents
+
+Install the engine package to use the `war-play` command. Each model is loaded
+from a Python `module:factory` reference; the no-argument factory must return an
+implementation of `AgentImplementation` from `war_game_engine.runner`, expose
+an `AgentProtocol`, and return `AgentDecision` from
+`decide(observation, rng=..., memory=...)`. This keeps the engine independent
+from concrete AI packages. The current `war_AI` package does not yet include a
+gameplay policy, so a compatible agent plugin must be supplied by the caller.
+
+Start a three-player game with one model repeated in both AI seats:
+
+```bash
+war-play --players 3 --human-seat 1 --seed 42 \
+  --model my_agents.baseline:create_agent --save game.json
+```
+
+Use different models in different seats by assigning each AI seat explicitly:
+
+```bash
+war-play --players 4 --human-seat 2 --seed 42 --save game.json \
+  --seat-model 1=my_agents.baseline:create_agent \
+  --seat-model 3=my_agents.search:create_agent \
+  --seat-model 4=my_agents.baseline:create_agent
+```
+
+The runner saves a full, private snapshot after every transition. Resume it
+without repeating the game or model settings:
+
+```bash
+war-play --resume game.json
+```
+
+The root seed initializes independent preparation, objective, card, combat, and
+per-player policy streams; their states and per-player agent memory are saved
+for deterministic resumption. Save files include every player's private
+objective and cards, so keep them local and do not share them as public replays.
+Models receive only their own `PlayerObservation` and legal actions. The human
+view shows only that player's private objective and cards. Combat currently
+uses the engine's fixed defender dice and simulated chance outcome, so there is
+no off-turn defensive choice to request.
+
+## Engine performance benchmark
+
+Run the phase 4.7 benchmark from this directory:
+
+```bash
+python scripts/benchmark_engine.py \
+  --games 1 \
+  --max-transitions-per-game 5000 \
+  --seed 20261023 \
+  --iterations 300 \
+  --output benchmarks/my-run.json
+```
+
+The campaign reports attempted, completed, and truncated games separately.
+Its throughput includes setup, random legal actions, invariant checks, and
+full-replay verification, but excludes process startup. Completed games per
+second counts only terminal games. The microbenchmarks report median and p95
+latency for shallow/deep copies, state and action validation, and action
+generation per phase; cProfile summaries are diagnostic and are not used for
+the wall-clock timings. Phase fixtures labelled `synthetic` are valid
+contract states constructed to exercise otherwise conditional choices such as
+claims, occupation, and full-card hands. Action-list SHA-256 signatures allow
+comparison with the Python reference without storing private game state.
+
+Memory measurements use `tracemalloc` and therefore cover Python-tracked
+allocations only; they exclude native allocations. Reports also include the
+environment, seed, workload limits, and serialized state size so results can
+be compared with the checked-in phase 4.7 reference and optimized runs.
+
 ## Phase 2 engine foundations
 
 `war_game_engine.setup.prepare_game()` creates a reproducible initial game for

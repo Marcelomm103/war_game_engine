@@ -1,0 +1,853 @@
+{
+  "environment": {
+    "logical_cpu_count": 28,
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.36",
+    "processor": null,
+    "python_implementation": "CPython",
+    "python_version": "3.11.17"
+  },
+  "game_campaign": {
+    "attempted_games": 1,
+    "attempted_games_per_second": 0.2207,
+    "completed_games": 1,
+    "completed_games_per_second": 0.2207,
+    "crashed_games": 0,
+    "elapsed_seconds": 4.531248,
+    "invariant_violations": 0,
+    "max_transitions_per_game": 5000,
+    "replay_checks": 1,
+    "replay_divergences": 0,
+    "requested_games": 1,
+    "seed": 20261023,
+    "timed_scope": "engine setup, random legal actions, state invariant validation, and full replay verification; excludes process startup",
+    "transitions": 1618,
+    "transitions_per_second": 357.08,
+    "truncated_games": 0
+  },
+  "measured_at_utc": "2026-10-27T00:06:33.961693+00:00",
+  "microbenchmarks": {
+    "action_generation_by_phase": {
+      "attack": {
+        "action_signature_sha256": "sha256:83a123f155cb85016a8475cd61eedd178abe2651a9f5a6d6b0d005836d9b6c8c",
+        "actions_per_call": 4,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 45.758,
+          "median_us": 40.459,
+          "operations_per_second": 21854.22,
+          "p95_us": 68.621
+        },
+        "phase_id": "attack",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 2105.402,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 415.482,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 1231.026,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 80,
+            "self_us": 175.06,
+            "total_calls": 80
+          },
+          {
+            "cumulative_us": 481.03,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 140,
+            "self_us": 182.697,
+            "total_calls": 140
+          },
+          {
+            "cumulative_us": 383.369,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 160,
+            "self_us": 39.132,
+            "total_calls": 160
+          },
+          {
+            "cumulative_us": 370.775,
+            "function": "engine.py:436:_validate_attack",
+            "primitive_calls": 60,
+            "self_us": 97.0,
+            "total_calls": 60
+          },
+          {
+            "cumulative_us": 344.237,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 160,
+            "self_us": 315.162,
+            "total_calls": 160
+          },
+          {
+            "cumulative_us": 275.904,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 3440,
+            "self_us": 275.904,
+            "total_calls": 3440
+          },
+          {
+            "cumulative_us": 217.605,
+            "function": "engine.py:235:_territory_by_id",
+            "primitive_calls": 80,
+            "self_us": 23.396,
+            "total_calls": 80
+          }
+        ]
+      },
+      "card_discard_synthetic": {
+        "action_signature_sha256": "sha256:e22b4b94decb59ec650b70d0459f261850889efedb8fa16cac4ebffdcec856f6",
+        "actions_per_call": 6,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 43.015,
+          "median_us": 41.154,
+          "operations_per_second": 23247.81,
+          "p95_us": 48.302
+        },
+        "phase_id": "card_discard",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 1884.522,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 251.815,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 1295.044,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 120,
+            "self_us": 247.286,
+            "total_calls": 120
+          },
+          {
+            "cumulative_us": 585.912,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 120,
+            "self_us": 244.008,
+            "total_calls": 120
+          },
+          {
+            "cumulative_us": 341.904,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 5160,
+            "self_us": 341.904,
+            "total_calls": 5160
+          },
+          {
+            "cumulative_us": 285.749,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 240,
+            "self_us": 52.45,
+            "total_calls": 240
+          },
+          {
+            "cumulative_us": 233.299,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 240,
+            "self_us": 197.566,
+            "total_calls": 240
+          },
+          {
+            "cumulative_us": 183.425,
+            "function": "engine.py:576:<setcomp>",
+            "primitive_calls": 120,
+            "self_us": 183.425,
+            "total_calls": 120
+          },
+          {
+            "cumulative_us": 173.372,
+            "function": "engine.py:420:_validate_discard_card",
+            "primitive_calls": 120,
+            "self_us": 50.732,
+            "total_calls": 120
+          }
+        ]
+      },
+      "card_purchase_synthetic": {
+        "action_signature_sha256": "sha256:5054af5e363439c49a3c4874ec2c072e6d15e8d6db582e9a81231c91c71a28d7",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 8.518,
+          "median_us": 8.397,
+          "operations_per_second": 117398.08,
+          "p95_us": 8.807
+        },
+        "phase_id": "card_purchase",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 408.733,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 41.078,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 310.782,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 20,
+            "self_us": 44.791,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 102.097,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 20,
+            "self_us": 43.191,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 95.533,
+            "function": "engine.py:397:_validate_draw_card",
+            "primitive_calls": 20,
+            "self_us": 34.127,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 58.906,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 860,
+            "self_us": 58.906,
+            "total_calls": 860
+          },
+          {
+            "cumulative_us": 57.94,
+            "function": "engine.py:96:_known_card_ids",
+            "primitive_calls": 20,
+            "self_us": 18.525,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 54.922,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 40,
+            "self_us": 10.868,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 51.199,
+            "function": "engine.py:576:<setcomp>",
+            "primitive_calls": 20,
+            "self_us": 51.199,
+            "total_calls": 20
+          }
+        ]
+      },
+      "initial_placement": {
+        "action_signature_sha256": "sha256:f42f61758cfaadc12e0483c6750c018aeb7718435810c18cbf5a9c82f5064367",
+        "actions_per_call": 14,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 166.479,
+          "median_us": 160.355,
+          "operations_per_second": 6006.76,
+          "p95_us": 198.67
+        },
+        "phase_id": "initial_placement",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 7046.815,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 693.701,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 5356.195,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 280,
+            "self_us": 523.148,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 2776.028,
+            "function": "engine.py:288:_validate_place_armies",
+            "primitive_calls": 280,
+            "self_us": 915.231,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 1461.175,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 280,
+            "self_us": 569.219,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 940.454,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 840,
+            "self_us": 183.307,
+            "total_calls": 840
+          },
+          {
+            "cumulative_us": 891.956,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 12040,
+            "self_us": 891.956,
+            "total_calls": 12040
+          },
+          {
+            "cumulative_us": 757.147,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 840,
+            "self_us": 666.94,
+            "total_calls": 840
+          },
+          {
+            "cumulative_us": 625.823,
+            "function": "engine.py:235:_territory_by_id",
+            "primitive_calls": 280,
+            "self_us": 74.06,
+            "total_calls": 280
+          }
+        ]
+      },
+      "movement": {
+        "action_signature_sha256": "sha256:3ef795c620086a481bf883cb32fca157d322dcfb130174242ae21eab9120bc2a",
+        "actions_per_call": 2,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 60.937,
+          "median_us": 52.267,
+          "operations_per_second": 16410.44,
+          "p95_us": 87.61
+        },
+        "phase_id": "movement",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 2072.549,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 407.604,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 892.273,
+            "function": "engine.py:239:_unmoved_army_count",
+            "primitive_calls": 300,
+            "self_us": 201.149,
+            "total_calls": 300
+          },
+          {
+            "cumulative_us": 697.164,
+            "function": "engine.py:235:_territory_by_id",
+            "primitive_calls": 340,
+            "self_us": 75.962,
+            "total_calls": 340
+          },
+          {
+            "cumulative_us": 621.202,
+            "function": "engine.py:236:<dictcomp>",
+            "primitive_calls": 340,
+            "self_us": 621.202,
+            "total_calls": 340
+          },
+          {
+            "cumulative_us": 616.582,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 40,
+            "self_us": 91.238,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 228.477,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 60,
+            "self_us": 96.424,
+            "total_calls": 60
+          },
+          {
+            "cumulative_us": 220.172,
+            "function": "engine.py:503:_validate_movement",
+            "primitive_calls": 20,
+            "self_us": 36.521,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 124.256,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 80,
+            "self_us": 21.736,
+            "total_calls": 80
+          }
+        ]
+      },
+      "occupation_synthetic": {
+        "action_signature_sha256": "sha256:29ea63ab0a5bc4f71e9d504eb907c307d2c6670c2d2498799f83fae009372e6c",
+        "actions_per_call": 3,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 22.724,
+          "median_us": 19.175,
+          "operations_per_second": 44005.63,
+          "p95_us": 31.029
+        },
+        "phase_id": "occupation",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 1000.556,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 146.077,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 671.704,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 60,
+            "self_us": 143.183,
+            "total_calls": 60
+          },
+          {
+            "cumulative_us": 343.232,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 60,
+            "self_us": 140.591,
+            "total_calls": 60
+          },
+          {
+            "cumulative_us": 202.641,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 2580,
+            "self_us": 202.641,
+            "total_calls": 2580
+          },
+          {
+            "cumulative_us": 171.906,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 120,
+            "self_us": 29.544,
+            "total_calls": 120
+          },
+          {
+            "cumulative_us": 142.362,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 120,
+            "self_us": 120.772,
+            "total_calls": 120
+          },
+          {
+            "cumulative_us": 96.176,
+            "function": "engine.py:576:<setcomp>",
+            "primitive_calls": 60,
+            "self_us": 96.176,
+            "total_calls": 60
+          },
+          {
+            "cumulative_us": 47.184,
+            "function": "~:0:<built-in method builtins.isinstance>",
+            "primitive_calls": 600,
+            "self_us": 47.184,
+            "total_calls": 600
+          }
+        ]
+      },
+      "reinforcement": {
+        "action_signature_sha256": "sha256:d95302ba686f52a1e7a50b1d1aceda9fa7c43ffaecb692269b444a30b691d6e2",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 7.307,
+          "median_us": 7.128,
+          "operations_per_second": 136864.0,
+          "p95_us": 7.893
+        },
+        "phase_id": "reinforcement",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 354.837,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 60.181,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 206.731,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 20,
+            "self_us": 45.241,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 101.425,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 20,
+            "self_us": 41.296,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 60.129,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 860,
+            "self_us": 60.129,
+            "total_calls": 860
+          },
+          {
+            "cumulative_us": 49.86,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 40,
+            "self_us": 10.097,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 39.763,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 40,
+            "self_us": 33.051,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 31.785,
+            "function": "engine.py:576:<setcomp>",
+            "primitive_calls": 20,
+            "self_us": 31.785,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 25.994,
+            "function": "engine.py:249:_pools_for_player",
+            "primitive_calls": 40,
+            "self_us": 18.853,
+            "total_calls": 40
+          }
+        ]
+      },
+      "reinforcement_placement": {
+        "action_signature_sha256": "sha256:ed5966a873c3762dd3bc75696a091f70755092d811c0cbefed63abc5287340cb",
+        "actions_per_call": 14,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 162.33,
+          "median_us": 158.615,
+          "operations_per_second": 6160.29,
+          "p95_us": 179.504
+        },
+        "phase_id": "reinforcement_placement",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 7415.837,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 761.537,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 5596.862,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 280,
+            "self_us": 545.9,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 2941.21,
+            "function": "engine.py:288:_validate_place_armies",
+            "primitive_calls": 280,
+            "self_us": 1034.517,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 1615.096,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 560,
+            "self_us": 679.89,
+            "total_calls": 560
+          },
+          {
+            "cumulative_us": 990.267,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 840,
+            "self_us": 181.411,
+            "total_calls": 840
+          },
+          {
+            "cumulative_us": 879.195,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 12040,
+            "self_us": 879.195,
+            "total_calls": 12040
+          },
+          {
+            "cumulative_us": 808.856,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 840,
+            "self_us": 711.163,
+            "total_calls": 840
+          },
+          {
+            "cumulative_us": 651.44,
+            "function": "engine.py:235:_territory_by_id",
+            "primitive_calls": 280,
+            "self_us": 74.923,
+            "total_calls": 280
+          }
+        ]
+      },
+      "reinforcement_with_five_cards_synthetic": {
+        "action_signature_sha256": "sha256:e749605e0c9defeb36e70ebb9d55890be3ffe5c75739f8ce5c8624791b435495",
+        "actions_per_call": 5,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 106.975,
+          "median_us": 101.847,
+          "operations_per_second": 9347.96,
+          "p95_us": 130.614
+        },
+        "phase_id": "reinforcement",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 4504.043,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 281.942,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 2584.212,
+            "function": "engine.py:102:_trade_set_is_valid",
+            "primitive_calls": 280,
+            "self_us": 672.871,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 2030.75,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 100,
+            "self_us": 221.503,
+            "total_calls": 100
+          },
+          {
+            "cumulative_us": 1037.775,
+            "function": "engine.py:358:_validate_trade_cards",
+            "primitive_calls": 80,
+            "self_us": 156.501,
+            "total_calls": 80
+          },
+          {
+            "cumulative_us": 885.588,
+            "function": "engine.py:96:_known_card_ids",
+            "primitive_calls": 280,
+            "self_us": 256.497,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 778.072,
+            "function": "engine.py:107:<dictcomp>",
+            "primitive_calls": 280,
+            "self_us": 778.072,
+            "total_calls": 280
+          },
+          {
+            "cumulative_us": 524.889,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 100,
+            "self_us": 220.825,
+            "total_calls": 100
+          },
+          {
+            "cumulative_us": 515.303,
+            "function": "engine.py:97:<setcomp>",
+            "primitive_calls": 280,
+            "self_us": 515.303,
+            "total_calls": 280
+          }
+        ]
+      },
+      "territory_claim_synthetic": {
+        "action_signature_sha256": "sha256:22795716b898c9bd128e978067d7afe66d1f461632d85d378ea93bb05ec1c3c2",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 7.973,
+          "median_us": 7.781,
+          "operations_per_second": 125422.25,
+          "p95_us": 8.434
+        },
+        "phase_id": "territory_claim",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 364.074,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 78.564,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 229.71,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 20,
+            "self_us": 38.39,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 102.804,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 20,
+            "self_us": 42.379,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 60.425,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 860,
+            "self_us": 60.425,
+            "total_calls": 860
+          },
+          {
+            "cumulative_us": 51.182,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 40,
+            "self_us": 10.623,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 46.323,
+            "function": "engine.py:235:_territory_by_id",
+            "primitive_calls": 20,
+            "self_us": 5.946,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 40.559,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 40,
+            "self_us": 33.543,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 40.377,
+            "function": "engine.py:236:<dictcomp>",
+            "primitive_calls": 20,
+            "self_us": 40.377,
+            "total_calls": 20
+          }
+        ]
+      },
+      "turn_end": {
+        "action_signature_sha256": "sha256:534beff3f9ba7b808ebda0301829e2350988b1131d822883fef61e4e99d5cfbb",
+        "actions_per_call": 1,
+        "latency": {
+          "iterations": 300,
+          "mean_us": 5.8,
+          "median_us": 5.727,
+          "operations_per_second": 172402.4,
+          "p95_us": 6.148
+        },
+        "phase_id": "turn_end",
+        "top_cumulative_profile_functions": [
+          {
+            "cumulative_us": 263.057,
+            "function": "engine.py:677:legal_actions",
+            "primitive_calls": 20,
+            "self_us": 38.279,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 176.378,
+            "function": "engine.py:544:validate_action",
+            "primitive_calls": 20,
+            "self_us": 35.037,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 98.322,
+            "function": "~:0:<built-in method builtins.any>",
+            "primitive_calls": 20,
+            "self_us": 40.908,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 57.414,
+            "function": "engine.py:579:<genexpr>",
+            "primitive_calls": 860,
+            "self_us": 57.414,
+            "total_calls": 860
+          },
+          {
+            "cumulative_us": 46.581,
+            "function": "main.py:270:__init__",
+            "primitive_calls": 40,
+            "self_us": 9.695,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 36.886,
+            "function": "~:0:<method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects>",
+            "primitive_calls": 40,
+            "self_us": 30.244,
+            "total_calls": 40
+          },
+          {
+            "cumulative_us": 29.886,
+            "function": "engine.py:576:<setcomp>",
+            "primitive_calls": 20,
+            "self_us": 29.886,
+            "total_calls": 20
+          },
+          {
+            "cumulative_us": 7.166,
+            "function": "~:0:<built-in method builtins.isinstance>",
+            "primitive_calls": 100,
+            "self_us": 7.166,
+            "total_calls": 100
+          }
+        ]
+      }
+    },
+    "cloning": {
+      "pydantic_deep_model_copy": {
+        "iterations": 300,
+        "mean_us": 150.882,
+        "median_us": 141.357,
+        "operations_per_second": 6627.68,
+        "p95_us": 220.471
+      },
+      "pydantic_shallow_model_copy": {
+        "iterations": 300,
+        "mean_us": 0.851,
+        "median_us": 0.838,
+        "operations_per_second": 1174517.66,
+        "p95_us": 0.924
+      },
+      "state_model_validate_from_pre_dumped_dict": {
+        "iterations": 300,
+        "mean_us": 60.604,
+        "median_us": 55.709,
+        "operations_per_second": 16500.58,
+        "p95_us": 80.625
+      }
+    },
+    "iterations": 300,
+    "memory": {
+      "canonical_state_json_bytes": 6056,
+      "clone_state_hash_matches": 1,
+      "measurement_scope": "tracemalloc Python allocations; excludes native allocations",
+      "tracked_python_bytes_peak_during_deep_clone": 42920,
+      "tracked_python_bytes_peak_during_setup": 61374,
+      "tracked_python_bytes_retained_by_deep_clone": 33808,
+      "tracked_python_bytes_retained_by_initial_state": 45166
+    },
+    "seed": 20261023,
+    "validation": {
+      "full_state_validation_from_pre_dumped_dict": {
+        "iterations": 300,
+        "mean_us": 59.587,
+        "median_us": 56.717,
+        "operations_per_second": 16782.17,
+        "p95_us": 75.443
+      },
+      "single_legal_attack_action": {
+        "iterations": 300,
+        "mean_us": 6.001,
+        "median_us": 5.779,
+        "operations_per_second": 166651.95,
+        "p95_us": 6.841
+      }
+    }
+  },
+  "schema_version": "1.0"
+}
